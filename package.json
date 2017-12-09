@@ -7,10 +7,16 @@
   "bugs": "https://github.com/willhlaw/node-firestore-backup-restore/issues",
   "author": "Will Lawrence <will.lawrence@gmail.com>",
   "license": "MIT",
-  "keywords": ["firebase", "firestore", "backup", "restore", "cli"],
+  "keywords": [
+    "firebase",
+    "firestore",
+    "backup",
+    "restore",
+    "cli"
+  ],
   "main": "./build/index.js",
   "scripts": {
-    "start": "./bin/firestore-backup.js",
+    "start": "./bin/firestore-backup-restore.js",
     "devStart": "babel-node index.js",
     "clean": "rm -rf build && mkdir build",
     "build": "babel -d ./build index.js",

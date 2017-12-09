@@ -1,29 +1,23 @@
-# firestore-backup
-A Google Firebase Firestore backup tool.
-
-[![codebeat badge](https://codebeat.co/badges/febdaccc-2648-4a74-9596-57b00c3f7af8)](https://codebeat.co/projects/github-com-steadyequipment-node-firestore-backup-master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b7e94350eba84ec198f83c05c3a10bd0)](https://www.codacy.com/app/Steadyequipment/node-firestore-backup?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=steadyequipment/node-firestore-backup&amp;utm_campaign=Badge_Grade)
-[![David badge](https://david-dm.org/steadyequipment/node-firestore-backup.svg)](https://david-dm.org/steadyequipment/node-firestore-backup)
-[![Known Vulnerabilities](https://snyk.io/test/github/steadyequipment/node-firestore-backup/badge.svg)](https://snyk.io/test/github/steadyequipment/node-firestore-backup)
-
+# firestore-backup-restore
+A Google Firebase Firestore backup and restore tool. This project was forked from https://github.com/steadyequipment/node-firestore-backup.git and extended. Node-firestore-backup is an excellent product and this project will stay in sync with its updates by monitoring it with ![Backstroke logo](https://backstroke.co/assets/img/logo.png) [Backstroke](https://backstroke.co/).
 
 ## Installation
 Install using [__npm__](https://www.npmjs.com/).
 
 ```sh
-npm install -g firestore-backup
+npm install -g firestore-backup-restore
 ```
 
  or [__yarn__](https://yarnpkg.com/en/)
 
 ```sh
-yarn global add firestore-backup
+yarn global add firestore-backup-restore
 ```
 
 Alternatively download the source.
 
 ```sh
-git clone https://github.com/steadyequipment/node-firestore-backup.git
+git clone https://github.com/willhlaw/node-firestore-backup-restore/commits/master
 ```
 
 ### Retrieving Google Cloud Account Credentials
@@ -34,7 +28,7 @@ git clone https://github.com/steadyequipment/node-firestore-backup.git
 1. Navigate to __Service Accounts__
 1. Click _Generate New Private Key_
 
-This downloaded json file contains the proper credentials needed for __firestore-backup__ to authenticate.
+This downloaded json file contains the proper credentials needed for __firestore-backup-restore__ to authenticate.
 
 
 ## Usage
@@ -42,10 +36,16 @@ This downloaded json file contains the proper credentials needed for __firestore
 ### Backup:
 * `-a`, `--accountCredentials` `<path>` - Google Cloud account credentials JSON file.
 * `-B`, `--backupPath` `<path>`- Path to store the backup.
+* `-a2`, `--restoreAccountCredentials` `<path>` - Google Cloud account credentials JSON file for restoring documents.
 
-Example:
+Example backup:
 ```sh
-firestore-backup --accountCredentials path/to/credentials/file.json --backupPath /backups/myDatabase
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase
+```
+
+Example backup and restore:
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --restoreAccountCredentials path/to/restore/credentials/file.json
 ```
 
 ### Backup with pretty printing:
@@ -53,11 +53,8 @@ firestore-backup --accountCredentials path/to/credentials/file.json --backupPath
 
 Example:
 ```sh
-firestore-backup --accountCredentials path/to/credentials/file.json --backupPath /backups/myDatabase --prettyPrint
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --prettyPrint
 ```
 
-### Relax:
-That's it! ✨🌈
-
 ## Contributions
-Feel free to report bugs and make feature requests in the [Issue Tracker](https://github.com/steadyequipment/node-firestore-backup/issues), fork and create pull requests!
+Feel free to report bugs in the [Issue Tracker](https://github.com/willhlaw/node-firestore-backup-restore/issues), fork and create pull requests!
