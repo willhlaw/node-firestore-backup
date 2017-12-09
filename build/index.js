@@ -32,10 +32,15 @@ var accountCredentialsPathParamDescription = 'Google Cloud account credentials J
 var backupPathParamKey = 'backupPath';
 var backupPathParamDescription = 'Path to store backup.';
 
+var restoreAccountCredentialsPathParamKey = 'restoreAccountCredentials';
+var restoreAccountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file for restoring documents.';
+
 var prettyPrintParamKey = 'prettyPrint';
 var prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
 
-_commander2.default.version('1.0.1').option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).parse(_process2.default.argv);
+var version = require('./package.json').version;
+
+_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).parse(_process2.default.argv);
 
 var accountCredentialsPath = _commander2.default[accountCredentialsPathParamKey];
 if (!accountCredentialsPath) {
@@ -57,19 +62,30 @@ if (!backupPath) {
   _process2.default.exit(1);
 }
 
-var prettyPrint = _commander2.default[prettyPrintParamKey] !== undefined && _commander2.default[prettyPrintParamKey] !== null;
-
-try {
-  var accountCredentialsBuffer = _fs2.default.readFileSync(accountCredentialsPath);
-
-  var accountCredentials = JSON.parse(accountCredentialsBuffer.toString());
-  _firebaseAdmin2.default.initializeApp({
-    credential: _firebaseAdmin2.default.credential.cert(accountCredentials)
-  });
-} catch (error) {
-  console.log(_colors2.default.bold(_colors2.default.red('Unable to read: ')) + _colors2.default.bold(accountCredentialsPath) + ' - ' + error);
+var restoreAccountCredentialsPath = _commander2.default[restoreAccountCredentialsPathParamKey];
+if (restoreAccountCredentialsPath && !_fs2.default.existsSync(restoreAccountCredentialsPath)) {
+  console.log(_colors2.default.bold(_colors2.default.red('Restore account credentials file does not exist: ')) + _colors2.default.bold(restoreAccountCredentialsPath));
+  _commander2.default.help();
   _process2.default.exit(1);
 }
+
+var prettyPrint = _commander2.default[prettyPrintParamKey] !== undefined && _commander2.default[prettyPrintParamKey] !== null;
+
+var getFireApp = function getFireApp(credentialsPath, appName) {
+  try {
+    var credentialsBuffer = _fs2.default.readFileSync(credentialsPath);
+
+    var credentials = JSON.parse(credentialsBuffer.toString());
+    return _firebaseAdmin2.default.initializeApp({
+      credential: _firebaseAdmin2.default.credential.cert(credentials)
+    }, appName || credentialsPath);
+  } catch (error) {
+    console.log(_colors2.default.bold(_colors2.default.red('Unable to read: ')) + _colors2.default.bold(credentialsPath) + ' - ' + error);
+    return _process2.default.exit(1);
+  }
+};
+
+var accountApp = getFireApp(accountCredentialsPath);
 
 try {
   _mkdirp2.default.sync(backupPath);
@@ -77,6 +93,8 @@ try {
   console.log(_colors2.default.bold(_colors2.default.red('Unable to create backup path: ')) + _colors2.default.bold(backupPath) + ' - ' + error);
   _process2.default.exit(1);
 }
+
+var restoreAccountApp = restoreAccountCredentialsPath ? getFireApp(restoreAccountCredentialsPath) : {};
 
 // from: https://hackernoon.com/functional-javascript-resolving-promises-sequentially-7aac18c4431e
 var promiseSerial = function promiseSerial(funcs) {
@@ -111,6 +129,7 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
   } catch (error) {
     console.log(_colors2.default.bold(_colors2.default.red('Unable to create backup path or write file, skipping backup of Document \'' + document.id + '\': ')) + _colors2.default.bold(backupPath) + ' - ' + error);
     //   process.exit(1)
+    return Promise.reject(error);
   }
 };
 
@@ -123,18 +142,32 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
       var backupFunctions = [];
       snapshots.forEach(function (document) {
         backupFunctions.push(function () {
-          return backupDocument(document, backupPath + '/' + document.id, logPath + collection.id + '/');
+          var backupDocumentPromise = backupDocument(document, backupPath + '/' + document.id, logPath + collection.id + '/');
+          restoreDocument(logPath + collection.id, document);
+          return backupDocumentPromise;
         });
       });
       return promiseSerial(backupFunctions);
     });
   } catch (error) {
     console.log(_colors2.default.bold(_colors2.default.red('Unable to create backup path, skipping backup of Collection \'' + collection.id + '\': ')) + _colors2.default.bold(backupPath) + ' - ' + error);
+    return Promise.reject(error);
   }
 };
 
-var database = _firebaseAdmin2.default.firestore();
-database.getCollections().then(function (collections) {
+var accountDb = accountApp.firestore();
+
+var restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
+
+var restoreDocument = function restoreDocument(collectionName, document) {
+  var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + document.id;
+  console.log(restoreMsg + '...');
+  return Promise.resolve(!restoreAccountDb ? null : restoreAccountDb.collection(collectionName).doc(document.id).set(document.data())).catch(function (error) {
+    console.log(_colors2.default.bold(_colors2.default.red('Error! ' + restoreMsg + ' - ' + error)));
+  });
+};
+
+accountDb.getCollections().then(function (collections) {
   return promiseSerial(collections.map(function (collection) {
     return function () {
       return backupCollection(collection, backupPath + '/' + collection.id, '/');
