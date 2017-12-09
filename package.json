@@ -1,18 +1,13 @@
 {
-  "name": "firestore-backup",
+  "name": "firestore-backup-restore",
   "version": "1.0.1",
-  "description": "Google Firebase Firestore backup tool",
-  "homepage": "https://github.com/steadyequipment/node-firestore-backup",
-  "repository": "https://github.com/steadyequipment/node-firestore-backup.git",
-  "bugs": "https://github.com/steadyequipment/node-firestore-backup/issues",
-  "author": "Ian G <yo.ian.g@gmail.com>",
+  "description": "Google Firebase Firestore backup and restore tool",
+  "homepage": "https://github.com/willhlaw/node-firestore-backup-restore",
+  "repository": "https://github.com/willhlaw/node-firestore-backup-restore.git",
+  "bugs": "https://github.com/willhlaw/node-firestore-backup-restore/issues",
+  "author": "Will Lawrence <will.lawrence@gmail.com>",
   "license": "MIT",
-  "keywords": [
-    "firebase",
-    "firestore",
-    "backup",
-    "cli"
-  ],
+  "keywords": ["firebase", "firestore", "backup", "restore", "cli"],
   "main": "./build/index.js",
   "scripts": {
     "start": "./bin/firestore-backup.js",
