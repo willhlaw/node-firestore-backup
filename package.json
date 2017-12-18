@@ -22,7 +22,7 @@
     "build": "babel -d ./build index.js",
     "prepublishOnly": "npm run clean && npm run build"
   },
-  "bin": "./bin/firestore-backup.js",
+  "bin": "./bin/firestore-backup-restore.js",
   "dependencies": {
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.6.1",
