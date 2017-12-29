@@ -1,6 +1,6 @@
 {
   "name": "firestore-backup-restore",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Google Firebase Firestore backup and restore tool",
   "homepage": "https://github.com/willhlaw/node-firestore-backup-restore",
   "repository": "https://github.com/willhlaw/node-firestore-backup-restore.git",
@@ -19,7 +19,8 @@
     "start": "./bin/firestore-backup-restore.js",
     "devStart": "babel-node index.js",
     "clean": "rm -rf build && mkdir build",
-    "build": "babel -d ./build index.js",
+    "build": "babel -d ./build index.js lib/*.js",
+    "test": "jest --watch",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "bin": "./bin/firestore-backup-restore.js",
@@ -36,6 +37,7 @@
     "babel-eslint": "7",
     "eslint": "3.x",
     "eslint-plugin-flowtype": "^2.39.1",
+    "jest": "^22.1.4",
     "standard": "^10.0.3"
   }
 }
