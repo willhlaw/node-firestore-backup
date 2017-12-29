@@ -24,9 +24,14 @@ var _mkdirp = require('mkdirp');
 
 var _mkdirp2 = _interopRequireDefault(_mkdirp);
 
+var _path = require('path');
+
+var _path2 = _interopRequireDefault(_path);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var accountCredentialsPathParamKey = 'accountCredentials';
+
 var accountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file';
 
 var backupPathParamKey = 'backupPath';
@@ -38,7 +43,8 @@ var restoreAccountCredentialsPathParamDescription = 'Google Cloud account creden
 var prettyPrintParamKey = 'prettyPrint';
 var prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
 
-var version = require('../package.json').version;
+var packagePath = __dirname.includes('/build') ? '..' : '.';
+var version = require(packagePath + '/package.json').version;
 
 _commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).parse(_process2.default.argv);
 
@@ -108,7 +114,7 @@ var promiseSerial = function promiseSerial(funcs) {
 };
 
 var backupDocument = function backupDocument(document, backupPath, logPath) {
-  console.log('Backing up Document \'' + logPath + document.id + '\'');
+  console.log("Backing up Document '" + logPath + document.id + "'");
   try {
     _mkdirp2.default.sync(backupPath);
     var fileContents = void 0;
@@ -127,14 +133,14 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
       }));
     });
   } catch (error) {
-    console.log(_colors2.default.bold(_colors2.default.red('Unable to create backup path or write file, skipping backup of Document \'' + document.id + '\': ')) + _colors2.default.bold(backupPath) + ' - ' + error);
+    console.log(_colors2.default.bold(_colors2.default.red("Unable to create backup path or write file, skipping backup of Document '" + document.id + "': ")) + _colors2.default.bold(backupPath) + ' - ' + error);
     //   process.exit(1)
     return Promise.reject(error);
   }
 };
 
 var backupCollection = function backupCollection(collection, backupPath, logPath) {
-  console.log('Backing up Collection \'' + logPath + collection.id + '\'');
+  console.log("Backing up Collection '" + logPath + collection.id + "'");
   try {
     _mkdirp2.default.sync(backupPath);
 
@@ -150,7 +156,7 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
       return promiseSerial(backupFunctions);
     });
   } catch (error) {
-    console.log(_colors2.default.bold(_colors2.default.red('Unable to create backup path, skipping backup of Collection \'' + collection.id + '\': ')) + _colors2.default.bold(backupPath) + ' - ' + error);
+    console.log(_colors2.default.bold(_colors2.default.red("Unable to create backup path, skipping backup of Collection '" + collection.id + "': ")) + _colors2.default.bold(backupPath) + ' - ' + error);
     return Promise.reject(error);
   }
 };
