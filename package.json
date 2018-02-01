@@ -19,7 +19,7 @@
     "start": "./bin/firestore-backup-restore.js",
     "devStart": "babel-node index.js",
     "clean": "rm -rf build && mkdir build",
-    "build": "babel -d ./build index.js",
+    "build": "babel -d ./build index.js lib/*.js",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "bin": "./bin/firestore-backup-restore.js",

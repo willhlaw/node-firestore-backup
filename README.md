@@ -48,6 +48,11 @@ Example backup and restore:
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --restoreAccountCredentials path/to/restore/credentials/file.json
 ```
 
+Example restore a backup:
+```sh
+firestore-backup-restore --backupPath /backups/myDatabase --restoreAccountCredentials path/to/restore/credentials/file.json
+```
+
 ### Backup with pretty printing:
 * `-P`, `--prettyPrint` - JSON backups done with pretty-printing.
 
