@@ -20,6 +20,7 @@
     "devStart": "babel-node index.js",
     "clean": "rm -rf build && mkdir build",
     "build": "babel -d ./build index.js lib/*.js",
+    "test": "jest --watch",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "bin": "./bin/firestore-backup-restore.js",
@@ -36,6 +37,7 @@
     "babel-eslint": "7",
     "eslint": "3.x",
     "eslint-plugin-flowtype": "^2.39.1",
+    "jest": "^22.1.4",
     "standard": "^10.0.3"
   }
 }

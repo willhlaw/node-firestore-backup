@@ -59,9 +59,25 @@ var constructDocumentObjectToBackup = exports.constructDocumentObjectToBackup = 
     } else if ((0, _types.isNumber)(value)) {
       documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, (0, _types.isNumber)(value)));
     } else if ((0, _types.isArray)(value)) {
-      // TODO
+      var childFieldBackup = value.reduce(function (acc, cur, i) {
+        var element = constructDocumentObjectToBackup(_defineProperty({}, i, cur));
+        acc[i] = element[i];
+        return acc;
+      }, {});
+      documentDataToStore[key] = Object.assign({}, documentDataToStore[key], {
+        type: _FirestoreTypes.TYPES.ARRAY,
+        value: childFieldBackup
+      });
     } else if ((0, _types.isObject)(value)) {
-      // TODO
+      var _childFieldBackup = Object.keys(value).reduce(function (acc, cur, i) {
+        var element = constructDocumentObjectToBackup(_defineProperty({}, cur, value[cur]));
+        acc[cur] = element[cur];
+        return acc;
+      }, {});
+      documentDataToStore[key] = Object.assign({}, documentDataToStore[key], {
+        type: _FirestoreTypes.TYPES.OBJECT,
+        value: _childFieldBackup
+      });
     } else if ((0, _types.isNull)(value)) {
       documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, (0, _types.isNull)(value)));
     } else if ((0, _types.isString)(value)) {
