@@ -1,15 +1,16 @@
 var TYPES = require('../build/lib/FirestoreTypes').TYPES;
 var constructDocumentObjectToBackup = require('../build/lib/FirestoreDocument')
   .constructDocumentObjectToBackup;
+var constructFirestoreDocumentObject = require('../build/lib/FirestoreDocument')
+  .constructFirestoreDocumentObject;
 
 describe('Basic test', () => {
   it('Tests are running!', () => {
     expect(true).toBe(true);
-    expect({ a: 1 }).toEqual({ a: 1 });
   });
 });
 
-describe('One field document backup', () => {
+describe('Single field document, backup and restore objects constructor', () => {
   test('Date field', () => {
     const dateString = '2018-01-09T14:11:00.000Z';
     const document = { startDate: new Date(dateString) };
@@ -17,6 +18,8 @@ describe('One field document backup', () => {
     const expectedObject = {
       startDate: { value: new Date(dateString), type: TYPES.TIMESTAMP }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(JSON.stringify(documentBackup)).toEqual(
       JSON.stringify(expectedObject)
@@ -29,6 +32,22 @@ describe('One field document backup', () => {
     const expectedObject = {
       name: { value: 'Jhon', type: TYPES.STRING }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
+    expect(documentBackup).toEqual(expectedObject);
+    expect(JSON.stringify(documentBackup)).toEqual(
+      JSON.stringify(expectedObject)
+    );
+  });
+
+  it('Null field', () => {
+    const document = { phoneNumber: null };
+    const documentBackup = constructDocumentObjectToBackup(document);
+    const expectedObject = {
+      phoneNumber: { value: null, type: TYPES.NULL }
+    };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(JSON.stringify(documentBackup)).toEqual(
       JSON.stringify(expectedObject)
@@ -41,16 +60,32 @@ describe('One field document backup', () => {
     const expectedObject = {
       isAvailable: { value: true, type: TYPES.BOOLEAN }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(JSON.stringify(documentBackup)).toEqual(
       JSON.stringify(expectedObject)
     );
   });
 
-  it('Number field', () => {
+  it('Integer Number field', () => {
     const document = { age: 21 };
     const documentBackup = constructDocumentObjectToBackup(document);
     const expectedObject = { age: { value: 21, type: TYPES.NUMBER } };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
+    expect(documentBackup).toEqual(expectedObject);
+    expect(JSON.stringify(documentBackup)).toEqual(
+      JSON.stringify(expectedObject)
+    );
+  });
+
+  it('Float Number field', () => {
+    const document = { size: 321.16 };
+    const documentBackup = constructDocumentObjectToBackup(document);
+    const expectedObject = { size: { value: 321.16, type: TYPES.NUMBER } };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(JSON.stringify(documentBackup)).toEqual(
       JSON.stringify(expectedObject)
@@ -68,6 +103,8 @@ describe('One field document backup', () => {
         type: TYPES.ARRAY
       }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(documentBackup.toString()).toEqual(expectedObject.toString());
   });
@@ -86,9 +123,14 @@ describe('One field document backup', () => {
         type: TYPES.ARRAY
       }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
+    expect(documentBackup.toString()).toEqual(expectedObject.toString());
   });
+});
 
+describe('Multiple fields document, backup and restore object constructor', () => {
   it('Object field that include simple fields and array', () => {
     const document = {
       user: { name: 'Jhon', age: 25, friends: ['Laura', 'Diego'] }
@@ -122,6 +164,8 @@ describe('One field document backup', () => {
         type: TYPES.OBJECT
       }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(documentBackup.toString()).toEqual(expectedObject.toString());
   });
@@ -167,6 +211,8 @@ describe('One field document backup', () => {
         type: TYPES.OBJECT
       }
     };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(documentBackup.toString()).toEqual(expectedObject.toString());
   });

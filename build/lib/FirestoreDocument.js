@@ -3,19 +3,33 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.constructDocumentObjectToBackup = exports.constructFirestoreDocumentObject = exports.saveDocument = undefined;
+exports.constructDocumentObjectToBackup = exports.constructFirestoreDocumentObject = exports.constructReferenceUrl = exports.saveDocument = undefined;
 
 var _FirestoreTypes = require('./FirestoreTypes');
 
 var _types = require('./types');
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; } // TODO: add flow
-
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var saveDocument = exports.saveDocument = function saveDocument(firestoreAccountDb, collectionName, documentId, data) {
   var options = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : { merge: false };
 
   return firestoreAccountDb.collection(collectionName).doc(documentId).set(data, options);
+};
+
+var constructReferenceUrl = exports.constructReferenceUrl = function constructReferenceUrl(reference) {
+  var referencePath = '';
+  Object.keys(reference).forEach(function (key) {
+    Object.keys(reference[key]).forEach(function (subKey) {
+      if (subKey === 'segments') {
+        var pathArray = reference[key][subKey];
+        pathArray.forEach(function (pathKey) {
+          referencePath = referencePath ? referencePath + '/' + pathKey : pathKey;
+        });
+      }
+    });
+  });
+  return referencePath;
 };
 
 var constructFirestoreDocumentObject = exports.constructFirestoreDocumentObject = function constructFirestoreDocumentObject(documentData) {
@@ -32,17 +46,31 @@ var constructFirestoreDocumentObject = exports.constructFirestoreDocumentObject 
     } else if (type === _FirestoreTypes.TYPES.NUMBER) {
       documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, value));
     } else if (type === _FirestoreTypes.TYPES.ARRAY) {
-      // TODO: an array can contains differents types inside
-      documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, value));
+      var childFieldObject = Object.keys(value).reduce(function (acc, cur, i) {
+        var element = constructFirestoreDocumentObject(_defineProperty({}, cur, value[cur]));
+        acc[i] = element[i];
+        return acc;
+      }, []);
+      documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, childFieldObject));
     } else if (type === _FirestoreTypes.TYPES.OBJECT) {
-      // TODO: an object can contains differents types inside
-      documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, value));
+      var _childFieldObject = Object.keys(value).reduce(function (acc, cur, i) {
+        var element = constructFirestoreDocumentObject(_defineProperty({}, cur, value[cur]));
+        acc[cur] = element[cur];
+        return acc;
+      }, {});
+      documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, _childFieldObject));
     } else if (type === _FirestoreTypes.TYPES.NULL) {
       documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, null));
     } else if (type === _FirestoreTypes.TYPES.STRING) {
       documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, value));
     } else {
-      // TODO: geolocation or reference type
+      if (type === _FirestoreTypes.TYPES.DOCUMENT_REFERENCE) {
+        // TODO:
+      } else if (type === _FirestoreTypes.TYPES.GEOPOINT) {
+        // TODO:
+      } else {
+        console.log('Unsupported type!');
+      }
     }
   });
   return documentDataToStore;
@@ -83,7 +111,19 @@ var constructDocumentObjectToBackup = exports.constructDocumentObjectToBackup = 
     } else if ((0, _types.isString)(value)) {
       documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, (0, _types.isString)(value)));
     } else {
-      // TODO: geolocation or reference type
+      if ((0, _types.isDocumentReference)(value)) {
+        documentDataToStore[key] = Object.assign({}, documentDataToStore[key], {
+          type: _FirestoreTypes.TYPES.DOCUMENT_REFERENCE,
+          value: constructReferenceUrl(value)
+        });
+      } else if ((0, _types.isGeopoint)(value)) {
+        documentDataToStore[key] = Object.assign({}, documentDataToStore[key], {
+          type: _FirestoreTypes.TYPES.GEOPOINT,
+          value: value
+        });
+      } else {
+        console.log('Unsupported type!');
+      }
     }
   });
   return documentDataToStore;

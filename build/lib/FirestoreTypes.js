@@ -12,5 +12,5 @@ var TYPES = exports.TYPES = {
   NULL: 'null',
   TIMESTAMP: 'timestamp',
   GEOPOINT: 'geopoint',
-  REFERENCE: 'reference'
+  DOCUMENT_REFERENCE: 'documentReference'
 };

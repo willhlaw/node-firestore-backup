@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.isDate = exports.isBoolean = exports.isUndefined = exports.isNull = exports.isObject = exports.isArray = exports.isNumber = exports.isString = undefined;
+exports.isGeopoint = exports.isDocumentReference = exports.isDate = exports.isBoolean = exports.isUndefined = exports.isNull = exports.isObject = exports.isArray = exports.isNumber = exports.isString = undefined;
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
@@ -95,4 +95,22 @@ var isDate = exports.isDate = function isDate(value) {
     };
   }
   return false;
+};
+
+// TODO: use DocumentReference and Geopoint types exposed by Firebase Admin SDK
+// more info: https://github.com/googleapis/nodejs-firestore/pull/123
+var isDocumentReference = exports.isDocumentReference = function isDocumentReference(documentElement) {
+  var isDocRef = false;
+  Object.keys(documentElement).forEach(function (key) {
+    Object.keys(documentElement[key]).forEach(function (subKey) {
+      if (subKey === 'segments') {
+        isDocRef = true;
+      }
+    });
+  });
+  return isDocRef;
+};
+
+var isGeopoint = exports.isGeopoint = function isGeopoint(documentElement) {
+  return !!documentElement._latitude && !!documentElement._longitude;
 };
