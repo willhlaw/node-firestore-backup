@@ -32,6 +32,10 @@ const prettyPrintParamDescription = 'JSON backups done with pretty-printing.'
 const packagePath = __dirname.includes('/build') ? '..' : '.'
 const version = require(`${packagePath}/package.json`).version
 
+// The data to be restored can replace the existing ones
+// or they can be merged with existing ones
+const mergeData = false
+
 commander
   .version(version)
   .option(
@@ -247,10 +251,13 @@ const restoreDocument = (collectionName: string, document: Object) => {
   return Promise.resolve(
     !restoreAccountDb
       ? null
-      : restoreAccountDb
-          .collection(collectionName)
-          .doc(document.id)
-          .set(document.data())
+      : saveDocument(
+        restoreAccountDb,
+        collectionName,
+        document.id,
+        document.data(),
+        { merge: mergeData }
+      )
   ).catch(error => {
     console.log(colors.bold(colors.red(`Error! ${restoreMsg}` + ' - ' + error)))
   })
@@ -280,7 +287,13 @@ const restoreBackup = (
       const collectionName = pathWithoutBackupPath.substr(0, pathWithoutBackupPath.lastIndexOf("\/"))
       const documentDataValue = fs.readFileSync(elementPath);
       const documentData = constructFirestoreDocumentObject(JSON.parse(documentDataValue))
-      promisesResult.push(saveDocument(restoreAccountDb, collectionName, documentId, documentData))
+      promisesResult.push(saveDocument(
+        restoreAccountDb,
+        collectionName,
+        documentId,
+        documentData,
+        { merge: mergeData }
+      ))
     }
   })
   return promisesResult

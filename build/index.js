@@ -47,6 +47,10 @@ var prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
 var packagePath = __dirname.includes('/build') ? '..' : '.';
 var version = require(packagePath + '/package.json').version;
 
+// The data to be restored can replace the existing ones
+// or they can be merged with existing ones
+var mergeData = false;
+
 _commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).parse(_process2.default.argv);
 
 var accountCredentialsPath = _commander2.default[accountCredentialsPathParamKey];
@@ -163,7 +167,7 @@ var restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firesto
 var restoreDocument = function restoreDocument(collectionName, document) {
   var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + document.id;
   console.log(restoreMsg + '...');
-  return Promise.resolve(!restoreAccountDb ? null : restoreAccountDb.collection(collectionName).doc(document.id).set(document.data())).catch(function (error) {
+  return Promise.resolve(!restoreAccountDb ? null : (0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, document.id, document.data(), { merge: mergeData })).catch(function (error) {
     console.log(_colors2.default.bold(_colors2.default.red('Error! ' + restoreMsg + ' - ' + error)));
   });
 };
@@ -186,7 +190,7 @@ var restoreBackup = function restoreBackup(backupPath, restoreAccountDb) {
       var collectionName = pathWithoutBackupPath.substr(0, pathWithoutBackupPath.lastIndexOf("\/"));
       var documentDataValue = _fs2.default.readFileSync(elementPath);
       var documentData = (0, _FirestoreDocument.constructFirestoreDocumentObject)(JSON.parse(documentDataValue));
-      promisesResult.push((0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData));
+      promisesResult.push((0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData, { merge: mergeData }));
     }
   });
   return promisesResult;
