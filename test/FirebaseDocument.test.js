@@ -1,3 +1,4 @@
+var firebaseAdmin = require('firebase-admin');
 var TYPES = require('../build/lib/FirestoreTypes').TYPES;
 var constructDocumentObjectToBackup = require('../build/lib/FirestoreDocument')
   .constructDocumentObjectToBackup;
@@ -127,6 +128,25 @@ describe('Single field document, backup and restore objects constructor', () => 
     expect(objectToRestore).toEqual(document);
     expect(documentBackup).toEqual(expectedObject);
     expect(documentBackup.toString()).toEqual(expectedObject.toString());
+  });
+
+  it('Geopoint field', () => {
+    const document = {
+      geotrack: new firebaseAdmin.firestore.GeoPoint(-32.8417, -64.3)
+    };
+    const documentBackup = constructDocumentObjectToBackup(document);
+    const expectedObject = {
+      geotrack: {
+        value: { _latitude: -32.8417, _longitude: -64.3 },
+        type: TYPES.GEOPOINT
+      }
+    };
+    const objectToRestore = constructFirestoreDocumentObject(documentBackup);
+    expect(objectToRestore).toEqual(document);
+    expect(documentBackup).toEqual(expectedObject);
+    expect(JSON.stringify(documentBackup)).toEqual(
+      JSON.stringify(expectedObject)
+    );
   });
 });
 

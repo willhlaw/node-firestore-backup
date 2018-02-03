@@ -1,5 +1,10 @@
 'use strict';
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.restoreAccountDb = undefined;
+
 var _commander = require('commander');
 
 var _commander2 = _interopRequireDefault(_commander);
@@ -162,12 +167,14 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
 
 var accountDb = accountCredentialsPath ? accountApp.firestore() : null;
 
-var restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
+var restoreAccountDb = exports.restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
 
 var restoreDocument = function restoreDocument(collectionName, document) {
   var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + document.id;
   console.log(restoreMsg + '...');
-  return Promise.resolve(!restoreAccountDb ? null : (0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, document.id, document.data(), { merge: mergeData })).catch(function (error) {
+  return Promise.resolve(
+  // TODO: use saveDocument using merge as an option
+  !restoreAccountDb ? null : restoreAccountDb.collection(collectionName).doc(document.id).set(document.data())).catch(function (error) {
     console.log(_colors2.default.bold(_colors2.default.red('Error! ' + restoreMsg + ' - ' + error)));
   });
 };

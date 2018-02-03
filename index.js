@@ -239,7 +239,7 @@ const accountDb = accountCredentialsPath
   ? accountApp.firestore()
   : null
 
-const restoreAccountDb = restoreAccountCredentialsPath
+export const restoreAccountDb = restoreAccountCredentialsPath
   ? restoreAccountApp.firestore()
   : null
 
@@ -249,15 +249,13 @@ const restoreDocument = (collectionName: string, document: Object) => {
   }`
   console.log(`${restoreMsg}...`)
   return Promise.resolve(
+    // TODO: use saveDocument using merge as an option
     !restoreAccountDb
       ? null
-      : saveDocument(
-        restoreAccountDb,
-        collectionName,
-        document.id,
-        document.data(),
-        { merge: mergeData }
-      )
+      : restoreAccountDb
+          .collection(collectionName)
+          .doc(document.id)
+          .set(document.data())
   ).catch(error => {
     console.log(colors.bold(colors.red(`Error! ${restoreMsg}` + ' - ' + error)))
   })

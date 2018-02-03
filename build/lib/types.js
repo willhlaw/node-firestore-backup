@@ -97,20 +97,11 @@ var isDate = exports.isDate = function isDate(value) {
   return false;
 };
 
-// TODO: use DocumentReference and Geopoint types exposed by Firebase Admin SDK
-// more info: https://github.com/googleapis/nodejs-firestore/pull/123
-var isDocumentReference = exports.isDocumentReference = function isDocumentReference(documentElement) {
-  var isDocRef = false;
-  Object.keys(documentElement).forEach(function (key) {
-    Object.keys(documentElement[key]).forEach(function (subKey) {
-      if (subKey === 'segments') {
-        isDocRef = true;
-      }
-    });
-  });
-  return isDocRef;
+// TODO: replace with instanceof comparation when library is updated
+var isDocumentReference = exports.isDocumentReference = function isDocumentReference(value) {
+  return value.constructor.name === 'DocumentReference';
 };
 
-var isGeopoint = exports.isGeopoint = function isGeopoint(documentElement) {
-  return !!documentElement._latitude && !!documentElement._longitude;
+var isGeopoint = exports.isGeopoint = function isGeopoint(value) {
+  return value.constructor.name === 'GeoPoint';
 };
