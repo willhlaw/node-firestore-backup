@@ -51,7 +51,6 @@ var constructReferenceUrl = exports.constructReferenceUrl = function constructRe
  */
 var constructFirestoreDocumentObject = exports.constructFirestoreDocumentObject = function constructFirestoreDocumentObject(documentData) {
   var documentDataToStore = {};
-  var restoreAccountDb = require('../index').restoreAccountDb;
   Object.keys(documentData).forEach(function (key) {
     var _documentData$key = documentData[key],
         value = _documentData$key.value,
@@ -88,6 +87,7 @@ var constructFirestoreDocumentObject = exports.constructFirestoreDocumentObject 
         var collectionName = value.substr(0, value.lastIndexOf('/'));
         // TODO: use import to replace this require
         // FIXME: possible circular dependency
+        var restoreAccountDb = require('../index').restoreAccountDb;
         var docRef = restoreAccountDb.collection(collectionName).doc(document);
         documentDataToStore = Object.assign({}, documentDataToStore, _defineProperty({}, key, docRef));
       } else if (type === _FirestoreTypes.TYPES.GEOPOINT) {
