@@ -9,6 +9,12 @@ import Firebase from 'firebase-admin'
 import mkdirp from 'mkdirp'
 import path from 'path'
 
+import {
+  constructFirestoreDocumentObject,
+  constructDocumentObjectToBackup,
+  saveDocument
+} from './lib/FirestoreDocument'
+
 const accountCredentialsPathParamKey = 'accountCredentials'
 const accountCredentialsPathParamDescription =
   'Google Cloud account credentials JSON file'
@@ -26,6 +32,10 @@ const prettyPrintParamDescription = 'JSON backups done with pretty-printing.'
 const packagePath = __dirname.includes('/build') ? '..' : '.'
 const version = require(`${packagePath}/package.json`).version
 
+// The data to be restored can replace the existing ones
+// or they can be merged with existing ones
+const mergeData = false
+
 commander
   .version(version)
   .option(
@@ -41,18 +51,10 @@ commander
   .parse(process.argv)
 
 const accountCredentialsPath = commander[accountCredentialsPathParamKey]
-if (!accountCredentialsPath) {
-  console.log(
-    colors.bold(colors.red('Missing: ')) +
-      colors.bold(accountCredentialsPathParamKey) +
-      ' - ' +
-      accountCredentialsPathParamDescription
-  )
-  commander.help()
-  process.exit(1)
-}
-
-if (!fs.existsSync(accountCredentialsPath)) {
+if (
+  accountCredentialsPath &&
+  !fs.existsSync(accountCredentialsPath)
+) {
   console.log(
     colors.bold(colors.red('Account credentials file does not exist: ')) +
       colors.bold(accountCredentialsPath)
@@ -114,7 +116,9 @@ const getFireApp = (credentialsPath: string, appName?: string): Object => {
   }
 }
 
-const accountApp: Object = getFireApp(accountCredentialsPath)
+const accountApp: Object = accountCredentialsPath
+  ? getFireApp(accountCredentialsPath)
+  : {}
 
 try {
   mkdirp.sync(backupPath)
@@ -152,10 +156,11 @@ const backupDocument = (
   try {
     mkdirp.sync(backupPath)
     let fileContents: string
+    const documentBackup = constructDocumentObjectToBackup(document.data())
     if (prettyPrint === true) {
-      fileContents = JSON.stringify(document.data(), null, 2)
+      fileContents = JSON.stringify(documentBackup, null, 2)
     } else {
-      fileContents = JSON.stringify(document.data())
+      fileContents = JSON.stringify(documentBackup)
     }
     fs.writeFileSync(backupPath + '/' + document.id + '.json', fileContents)
 
@@ -185,7 +190,6 @@ const backupDocument = (
         ' - ' +
         error
     )
-    //   process.exit(1)
     return Promise.reject(error)
   }
 }
@@ -231,9 +235,11 @@ const backupCollection = (
   }
 }
 
-const accountDb = accountApp.firestore()
+const accountDb = accountCredentialsPath
+  ? accountApp.firestore()
+  : null
 
-const restoreAccountDb = restoreAccountCredentialsPath
+export const restoreAccountDb = restoreAccountCredentialsPath
   ? restoreAccountApp.firestore()
   : null
 
@@ -243,6 +249,7 @@ const restoreDocument = (collectionName: string, document: Object) => {
   }`
   console.log(`${restoreMsg}...`)
   return Promise.resolve(
+    // TODO: use saveDocument using merge as an option
     !restoreAccountDb
       ? null
       : restoreAccountDb
@@ -254,16 +261,63 @@ const restoreDocument = (collectionName: string, document: Object) => {
   })
 }
 
-accountDb.getCollections().then(collections => {
-  return promiseSerial(
-    collections.map(collection => {
-      return () => {
-        return backupCollection(
-          collection,
-          backupPath + '/' + collection.id,
-          '/'
-        )
-      }
-    })
-  )
-})
+const restoreBackup = (
+  backupPath: string,
+  restoreAccountDb: Object,
+  promisesChain: Array = []
+) => {
+  const promisesResult = promisesChain
+  fs.readdirSync(backupPath).forEach(element => {
+    const elementPath = `${backupPath}/${element}`
+    const stats = fs.statSync(elementPath);
+    const isDirectory = stats.isDirectory();
+    if (isDirectory) {
+      const folderPromises = restoreBackup(
+        elementPath,
+        restoreAccountDb,
+        promisesChain
+      )
+      promisesResult.concat(folderPromises)
+    } else {
+      const documentId = backupPath.split("/").pop();
+      const pathWithoutId = backupPath.substr(0, backupPath.lastIndexOf("\/"))
+      const pathWithoutBackupPath = backupPath.substr(backupPath.indexOf("\/"), backupPath.length)
+      const collectionName = pathWithoutBackupPath.substr(0, pathWithoutBackupPath.lastIndexOf("\/"))
+      const documentDataValue = fs.readFileSync(elementPath);
+      const documentData = constructFirestoreDocumentObject(JSON.parse(documentDataValue))
+      promisesResult.push(saveDocument(
+        restoreAccountDb,
+        collectionName,
+        documentId,
+        documentData,
+        { merge: mergeData }
+      ))
+    }
+  })
+  return promisesResult
+}
+
+const mustExecuteBackup: boolean = !!accountDb || (!!accountDb && !!restoreAccountDb)
+if (mustExecuteBackup) {
+  accountDb.getCollections().then(collections => {
+    return promiseSerial(
+      collections.map(collection => {
+        return () => {
+          return backupCollection(
+            collection,
+            backupPath + '/' + collection.id,
+            '/'
+          )
+        }
+      })
+    )
+  })
+}
+
+const mustExecuteRestore: boolean = !accountDb && !!restoreAccountDb && !!backupPath
+if (mustExecuteRestore) {
+  const promisesRes = restoreBackup(backupPath, restoreAccountDb)
+  Promise.all(promisesRes)
+    .then(restoration => console.log(`Restoration Completed!`))
+    .catch(errors => console.log(`Restore Errors: ${errors}`))
+}
