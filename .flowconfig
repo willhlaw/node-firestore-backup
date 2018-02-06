@@ -1,7 +1,10 @@
 [include]
-src/.*
+.*/lib/
+./index.js
 
 [ignore]
+.*/node_modules/
+.*/
 
 [libs]
 

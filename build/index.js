@@ -1,5 +1,14 @@
 'use strict';
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.restoreAccountDb = undefined;
+
+var _typeof2 = require('babel-runtime/helpers/typeof');
+
+var _typeof3 = _interopRequireDefault(_typeof2);
+
 var _commander = require('commander');
 
 var _commander2 = _interopRequireDefault(_commander);
@@ -28,6 +37,10 @@ var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
 
+var _FirestoreFunctions = require('./lib/FirestoreFunctions');
+
+var _FirestoreDocument = require('./lib/FirestoreDocument');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var accountCredentialsPathParamKey = 'accountCredentials';
@@ -43,19 +56,20 @@ var restoreAccountCredentialsPathParamDescription = 'Google Cloud account creden
 var prettyPrintParamKey = 'prettyPrint';
 var prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
 
+var plainJSONBackupParamKey = 'plainJSONBackup';
+var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information. \n                                          - Lacks full fidelity restore to Firestore. \n                                          - Can be used for other export purposes.';
+
 var packagePath = __dirname.includes('/build') ? '..' : '.';
 var version = require(packagePath + '/package.json').version;
 
-_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).parse(_process2.default.argv);
+// The data to be restored can replace the existing ones
+// or they can be merged with existing ones
+var mergeData = false;
+
+_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).parse(_process2.default.argv);
 
 var accountCredentialsPath = _commander2.default[accountCredentialsPathParamKey];
-if (!accountCredentialsPath) {
-  console.log(_colors2.default.bold(_colors2.default.red('Missing: ')) + _colors2.default.bold(accountCredentialsPathParamKey) + ' - ' + accountCredentialsPathParamDescription);
-  _commander2.default.help();
-  _process2.default.exit(1);
-}
-
-if (!_fs2.default.existsSync(accountCredentialsPath)) {
+if (accountCredentialsPath && !_fs2.default.existsSync(accountCredentialsPath)) {
   console.log(_colors2.default.bold(_colors2.default.red('Account credentials file does not exist: ')) + _colors2.default.bold(accountCredentialsPath));
   _commander2.default.help();
   _process2.default.exit(1);
@@ -77,21 +91,9 @@ if (restoreAccountCredentialsPath && !_fs2.default.existsSync(restoreAccountCred
 
 var prettyPrint = _commander2.default[prettyPrintParamKey] !== undefined && _commander2.default[prettyPrintParamKey] !== null;
 
-var getFireApp = function getFireApp(credentialsPath, appName) {
-  try {
-    var credentialsBuffer = _fs2.default.readFileSync(credentialsPath);
+var plainJSONBackup = _commander2.default[plainJSONBackupParamKey] !== undefined && _commander2.default[plainJSONBackupParamKey] !== null;
 
-    var credentials = JSON.parse(credentialsBuffer.toString());
-    return _firebaseAdmin2.default.initializeApp({
-      credential: _firebaseAdmin2.default.credential.cert(credentials)
-    }, appName || credentialsPath);
-  } catch (error) {
-    console.log(_colors2.default.bold(_colors2.default.red('Unable to read: ')) + _colors2.default.bold(credentialsPath) + ' - ' + error);
-    return _process2.default.exit(1);
-  }
-};
-
-var accountApp = getFireApp(accountCredentialsPath);
+var accountApp = accountCredentialsPath ? (0, _FirestoreFunctions.getFireApp)(accountCredentialsPath) : {};
 
 try {
   _mkdirp2.default.sync(backupPath);
@@ -100,7 +102,7 @@ try {
   _process2.default.exit(1);
 }
 
-var restoreAccountApp = restoreAccountCredentialsPath ? getFireApp(restoreAccountCredentialsPath) : {};
+var restoreAccountApp = restoreAccountCredentialsPath ? (0, _FirestoreFunctions.getFireApp)(restoreAccountCredentialsPath) : {};
 
 // from: https://hackernoon.com/functional-javascript-resolving-promises-sequentially-7aac18c4431e
 var promiseSerial = function promiseSerial(funcs) {
@@ -114,14 +116,16 @@ var promiseSerial = function promiseSerial(funcs) {
 };
 
 var backupDocument = function backupDocument(document, backupPath, logPath) {
-  console.log("Backing up Document '" + logPath + document.id + "'");
+  console.log("Backing up Document '" + logPath + document.id + "'" + (plainJSONBackup === true ? ' with -J --plainJSONBackup' : ' with type information'));
+
   try {
     _mkdirp2.default.sync(backupPath);
     var fileContents = void 0;
+    var documentBackup = plainJSONBackup === true ? document.data() : (0, _FirestoreDocument.constructDocumentObjectToBackup)(document.data());
     if (prettyPrint === true) {
-      fileContents = JSON.stringify(document.data(), null, 2);
+      fileContents = JSON.stringify(documentBackup, null, 2);
     } else {
-      fileContents = JSON.stringify(document.data());
+      fileContents = JSON.stringify(documentBackup);
     }
     _fs2.default.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 
@@ -134,13 +138,20 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
     });
   } catch (error) {
     console.log(_colors2.default.bold(_colors2.default.red("Unable to create backup path or write file, skipping backup of Document '" + document.id + "': ")) + _colors2.default.bold(backupPath) + ' - ' + error);
-    //   process.exit(1)
     return Promise.reject(error);
   }
 };
 
 var backupCollection = function backupCollection(collection, backupPath, logPath) {
   console.log("Backing up Collection '" + logPath + collection.id + "'");
+
+  if (collection.id.indexOf('eotrack') > 0) {
+    console.log('Skipping ' + collection.id);
+    return promiseSerial([function () {
+      return Promise.resolve();
+    }]);
+  }
+
   try {
     _mkdirp2.default.sync(backupPath);
 
@@ -161,22 +172,78 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
   }
 };
 
-var accountDb = accountApp.firestore();
+var accountDb = accountCredentialsPath ? accountApp.firestore() : null;
 
-var restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
+var restoreAccountDb = exports.restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
 
 var restoreDocument = function restoreDocument(collectionName, document) {
   var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + document.id;
   console.log(restoreMsg + '...');
-  return Promise.resolve(!restoreAccountDb ? null : restoreAccountDb.collection(collectionName).doc(document.id).set(document.data())).catch(function (error) {
+  return Promise.resolve(
+  // TODO: use saveDocument using merge as an option
+  !restoreAccountDb ? null : restoreAccountDb.collection(collectionName).doc(document.id).set(document.data())).catch(function (error) {
     console.log(_colors2.default.bold(_colors2.default.red('Error! ' + restoreMsg + ' - ' + error)));
   });
 };
 
-accountDb.getCollections().then(function (collections) {
-  return promiseSerial(collections.map(function (collection) {
-    return function () {
-      return backupCollection(collection, backupPath + '/' + collection.id, '/');
-    };
-  }));
-});
+var restoreBackup = function restoreBackup(backupPath, restoreAccountDb) {
+  var promisesChain = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+
+  var promisesResult = promisesChain;
+  _fs2.default.readdirSync(backupPath).forEach(function (element) {
+    var elementPath = backupPath + '/' + element;
+    var stats = _fs2.default.statSync(elementPath);
+    var isDirectory = stats.isDirectory();
+    if (isDirectory) {
+      var folderPromises = restoreBackup(elementPath, restoreAccountDb, promisesChain);
+      promisesResult.concat(folderPromises);
+    } else {
+      var documentId = backupPath.split('/').pop();
+      var pathWithoutId = backupPath.substr(0, backupPath.lastIndexOf('/'));
+      var pathWithoutBackupPath = backupPath.substr(backupPath.indexOf('/'), backupPath.length);
+      var collectionName = pathWithoutBackupPath.substr(0, pathWithoutBackupPath.lastIndexOf('/'));
+
+      var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + elementPath;
+      console.log('' + restoreMsg);
+
+      var documentDataValue = _fs2.default.readFileSync(elementPath);
+      var documentData = (0, _FirestoreDocument.constructFirestoreDocumentObject)(JSON.parse(documentDataValue), { firestore: restoreAccountDb });
+      promisesResult.push((0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData, { merge: mergeData }).then(function (doc) {
+        console.log('doc', doc);
+      }).catch(function (saveError) {
+        var saveErrorMsg = '\n !!! UH-OH, error saving collection ' + collectionName + ' document ' + elementPath;
+        console.error(saveErrorMsg, saveError);
+        if (!saveError.metadata) {
+          saveError.metadata = {};
+        }
+        saveError.metadata.collectionName = collectionName;
+        saveError.metadata.document = elementPath;
+        return Promise.reject(saveError);
+      }));
+    }
+  });
+  return promisesResult;
+};
+
+var mustExecuteBackup = !!accountDb || !!accountDb && !!restoreAccountDb;
+if (mustExecuteBackup) {
+  accountDb.getCollections().then(function (collections) {
+    return promiseSerial(collections.map(function (collection) {
+      return function () {
+        return backupCollection(collection, backupPath + '/' + collection.id, '/');
+      };
+    }));
+  });
+}
+
+var mustExecuteRestore = !accountDb && !!restoreAccountDb && !!backupPath;
+if (mustExecuteRestore) {
+  var promisesRes = restoreBackup(backupPath, restoreAccountDb);
+  Promise.all(promisesRes).then(function (restoration) {
+    return console.log('\n -- Restore Completed! -- \n');
+  }).catch(function (errors) {
+    console.log(typeof errors === 'undefined' ? 'undefined' : (0, _typeof3.default)(errors));
+    console.log('\n !!! Restore NOT Complete; there were Errors !!!\n');
+    (errors instanceof Array ? errors : [errors]).map(console.error);
+  });
+}
