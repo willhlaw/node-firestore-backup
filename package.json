@@ -1,6 +1,6 @@
 {
   "name": "firestore-backup-restore",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Google Firebase Firestore backup and restore tool",
   "homepage": "https://github.com/willhlaw/node-firestore-backup-restore",
   "repository": "https://github.com/willhlaw/node-firestore-backup-restore.git",

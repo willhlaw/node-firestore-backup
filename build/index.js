@@ -5,10 +5,6 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.restoreAccountDb = undefined;
 
-var _typeof2 = require('babel-runtime/helpers/typeof');
-
-var _typeof3 = _interopRequireDefault(_typeof2);
-
 var _commander = require('commander');
 
 var _commander2 = _interopRequireDefault(_commander);
@@ -145,12 +141,11 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
 var backupCollection = function backupCollection(collection, backupPath, logPath) {
   console.log("Backing up Collection '" + logPath + collection.id + "'");
 
-  if (collection.id.indexOf('eotrack') > 0) {
-    console.log('Skipping ' + collection.id);
-    return promiseSerial([function () {
-      return Promise.resolve();
-    }]);
-  }
+  // TODO: implement feature to skip certain Collections
+  // if (collection.id.toLowerCase().indexOf('geotrack') > 0) {
+  //   console.log(`Skipping ${collection.id}`);
+  //   return promiseSerial([() => Promise.resolve()]);
+  // }
 
   try {
     _mkdirp2.default.sync(backupPath);
@@ -208,10 +203,8 @@ var restoreBackup = function restoreBackup(backupPath, restoreAccountDb) {
 
       var documentDataValue = _fs2.default.readFileSync(elementPath);
       var documentData = (0, _FirestoreDocument.constructFirestoreDocumentObject)(JSON.parse(documentDataValue), { firestore: restoreAccountDb });
-      promisesResult.push((0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData, { merge: mergeData }).then(function (doc) {
-        console.log('doc', doc);
-      }).catch(function (saveError) {
-        var saveErrorMsg = '\n !!! UH-OH, error saving collection ' + collectionName + ' document ' + elementPath;
+      promisesResult.push((0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData, { merge: mergeData }).catch(function (saveError) {
+        var saveErrorMsg = '\n !!! Uh-Oh, error saving collection ' + collectionName + ' document ' + elementPath;
         console.error(saveErrorMsg, saveError);
         if (!saveError.metadata) {
           saveError.metadata = {};
@@ -242,7 +235,6 @@ if (mustExecuteRestore) {
   Promise.all(promisesRes).then(function (restoration) {
     return console.log('\n -- Restore Completed! -- \n');
   }).catch(function (errors) {
-    console.log(typeof errors === 'undefined' ? 'undefined' : (0, _typeof3.default)(errors));
     console.log('\n !!! Restore NOT Complete; there were Errors !!!\n');
     (errors instanceof Array ? errors : [errors]).map(console.error);
   });

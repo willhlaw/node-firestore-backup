@@ -25,8 +25,6 @@ var saveDocument = exports.saveDocument = function saveDocument(firestoreAccount
   var options = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : { merge: false };
 
   var doc = firestoreAccountDb.collection(collectionName).doc(documentId);
-
-  console.log(doc);
   return doc.set(data, options);
 };
 
@@ -89,7 +87,7 @@ var constructFirestoreDocumentObject = exports.constructFirestoreDocumentObject 
       documentDataToStore = Object.assign({}, documentDataToStore, (0, _defineProperty3.default)({}, key, childFieldObject));
     } else if (type === _FirestoreTypes.TYPES.OBJECT) {
       var _childFieldObject = Object.keys(value).reduce(function (acc, cur, i) {
-        var element = constructFirestoreDocumentObject((0, _defineProperty3.default)({}, cur, value[cur]));
+        var element = constructFirestoreDocumentObject((0, _defineProperty3.default)({}, cur, value[cur]), { firestore: firestore });
         acc[cur] = element[cur];
         return acc;
       }, {});
