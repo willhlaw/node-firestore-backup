@@ -3,15 +3,36 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.isGeopoint = exports.isDocumentReference = exports.isDate = exports.isBoolean = exports.isUndefined = exports.isNull = exports.isObject = exports.isArray = exports.isNumber = exports.isString = undefined;
+exports.isGeopoint = exports.isDocumentReference = exports.isDate = exports.isBoolean = exports.isNull = exports.isObject = exports.isArray = exports.isNumber = exports.isString = undefined;
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var _typeof2 = require('babel-runtime/helpers/typeof');
+
+var _typeof3 = _interopRequireDefault(_typeof2);
 
 var _FirestoreTypes = require('./FirestoreTypes');
+
+var _firebaseAdmin = require('firebase-admin');
+
+var _firebaseAdmin2 = _interopRequireDefault(_firebaseAdmin);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var targetDocID = 'vLxw3OC8h3mSRBZLcbvs';
+
+function clone(objToClone, _ref) {
+  var _ref$prototype = _ref.prototype,
+      prototype = _ref$prototype === undefined ? Object.prototype : _ref$prototype;
+
+  var clonedObj = Object.create(prototype);
+  return Object.assign(clonedObj, objToClone);
+}
 
 // Returns if a value is a string
 var isString = exports.isString = function isString(value) {
   if (typeof value === 'string' || value instanceof String) {
+    if (value.indexOf(targetDocID) > 0) {
+      console.error('found it as string!\n - value', value);
+    }
     return {
       value: value,
       type: _FirestoreTypes.TYPES.STRING
@@ -33,7 +54,7 @@ var isNumber = exports.isNumber = function isNumber(value) {
 
 // Returns if a value is an array
 var isArray = exports.isArray = function isArray(value) {
-  if (value && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' && value.constructor === Array) {
+  if (value && (typeof value === 'undefined' ? 'undefined' : (0, _typeof3.default)(value)) === 'object' && value.constructor === Array) {
     return {
       value: value,
       type: _FirestoreTypes.TYPES.ARRAY
@@ -44,7 +65,10 @@ var isArray = exports.isArray = function isArray(value) {
 
 // Returns if a value is an object
 var isObject = exports.isObject = function isObject(value) {
-  if (value && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' && value.constructor === Object) {
+  if (value && (typeof value === 'undefined' ? 'undefined' : (0, _typeof3.default)(value)) === 'object' && value.constructor === Object) {
+    if (JSON.stringify(value).indexOf(targetDocID) > 0) {
+      console.error('found it as object!\n - value', value);
+    }
     return {
       value: value,
       type: _FirestoreTypes.TYPES.OBJECT
@@ -59,17 +83,6 @@ var isNull = exports.isNull = function isNull(value) {
     return {
       value: value,
       type: _FirestoreTypes.TYPES.NULL
-    };
-  }
-  return false;
-};
-
-// Returns if a value is undefined
-var isUndefined = exports.isUndefined = function isUndefined(value) {
-  if (typeof value === 'undefined') {
-    return {
-      value: value,
-      type: 'undefined'
     };
   }
   return false;
@@ -97,11 +110,30 @@ var isDate = exports.isDate = function isDate(value) {
   return false;
 };
 
-// TODO: replace with instanceof comparation when library is updated
 var isDocumentReference = exports.isDocumentReference = function isDocumentReference(value) {
-  return value.constructor.name === 'DocumentReference';
+  if (value instanceof _firebaseAdmin2.default.firestore.DocumentReference) {
+    // Create a clone to ensure instance of DocumentReference and to mutate
+    var documentReference = clone(value, _firebaseAdmin2.default.firestore.DocumentReference.prototype);
+    // Remove _firestore as it is unnecessary and we do not want to keep it
+    delete documentReference._firestore;
+
+    if (JSON.stringify(value).indexOf(targetDocID) > 0) {
+      console.error('found it!\n - value', value, '\n - documentReference', documentReference);
+    }
+    return {
+      value: documentReference,
+      type: _FirestoreTypes.TYPES.DOCUMENT_REFERENCE
+    };
+  }
+  return false;
 };
 
 var isGeopoint = exports.isGeopoint = function isGeopoint(value) {
-  return value.constructor.name === 'GeoPoint';
+  if (value instanceof _firebaseAdmin2.default.firestore.GeoPoint) {
+    return {
+      value: value,
+      type: _FirestoreTypes.TYPES.GEOPOINT
+    };
+  }
+  return false;
 };
