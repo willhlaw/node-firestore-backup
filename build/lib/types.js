@@ -17,8 +17,6 @@ var _firebaseAdmin2 = _interopRequireDefault(_firebaseAdmin);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var targetDocID = 'vLxw3OC8h3mSRBZLcbvs';
-
 function clone(objToClone, _ref) {
   var _ref$prototype = _ref.prototype,
       prototype = _ref$prototype === undefined ? Object.prototype : _ref$prototype;
@@ -30,9 +28,6 @@ function clone(objToClone, _ref) {
 // Returns if a value is a string
 var isString = exports.isString = function isString(value) {
   if (typeof value === 'string' || value instanceof String) {
-    if (value.indexOf(targetDocID) > 0) {
-      console.error('found it as string!\n - value', value);
-    }
     return {
       value: value,
       type: _FirestoreTypes.TYPES.STRING
@@ -66,9 +61,6 @@ var isArray = exports.isArray = function isArray(value) {
 // Returns if a value is an object
 var isObject = exports.isObject = function isObject(value) {
   if (value && (typeof value === 'undefined' ? 'undefined' : (0, _typeof3.default)(value)) === 'object' && value.constructor === Object) {
-    if (JSON.stringify(value).indexOf(targetDocID) > 0) {
-      console.error('found it as object!\n - value', value);
-    }
     return {
       value: value,
       type: _FirestoreTypes.TYPES.OBJECT
@@ -116,10 +108,6 @@ var isDocumentReference = exports.isDocumentReference = function isDocumentRefer
     var documentReference = clone(value, _firebaseAdmin2.default.firestore.DocumentReference.prototype);
     // Remove _firestore as it is unnecessary and we do not want to keep it
     delete documentReference._firestore;
-
-    if (JSON.stringify(value).indexOf(targetDocID) > 0) {
-      console.error('found it!\n - value', value, '\n - documentReference', documentReference);
-    }
     return {
       value: documentReference,
       type: _FirestoreTypes.TYPES.DOCUMENT_REFERENCE
