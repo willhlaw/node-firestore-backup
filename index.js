@@ -21,22 +21,26 @@ const accountCredentialsPathParamDescription =
   'Google Cloud account credentials JSON file';
 
 const backupPathParamKey = 'backupPath';
-const backupPathParamDescription = 'Path to store backup.';
+const backupPathParamDescription = 'Path to store backup';
 
 const restoreAccountCredentialsPathParamKey = 'restoreAccountCredentials';
 const restoreAccountCredentialsPathParamDescription =
-  'Google Cloud account credentials JSON file for restoring documents.';
+  'Google Cloud account credentials JSON file for restoring documents';
 
 const prettyPrintParamKey = 'prettyPrint';
-const prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
+const prettyPrintParamDescription = 'JSON backups done with pretty-printing';
 
 const plainJSONBackupParamKey = 'plainJSONBackup';
-const plainJSONBackupParamDescription = `JSON backups done without preserving any type information.
-                                          - Lacks full fidelity restore to Firestore.
-                                          - Can be used for other export purposes.`;
+const plainJSONBackupParamDescription = `JSON backups done without preserving any type information
+                                          - Lacks full fidelity restore to Firestore
+                                          - Can be used for other export purposes`;
 
 const packagePath = __dirname.includes('/build') ? '..' : '.';
-const version = require(`${packagePath}/package.json`).version;
+
+let version = 'N/A - unable to read package.json file';
+try {
+  version = require(`${packagePath}/package.json`).version;
+} catch (requireError) {}
 
 // The data to be restored can replace the existing ones
 // or they can be merged with existing ones
