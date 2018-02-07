@@ -53,7 +53,7 @@ var prettyPrintParamKey = 'prettyPrint';
 var prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
 
 var plainJSONBackupParamKey = 'plainJSONBackup';
-var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information. \n                                          - Lacks full fidelity restore to Firestore. \n                                          - Can be used for other export purposes.';
+var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information.\n                                          - Lacks full fidelity restore to Firestore.\n                                          - Can be used for other export purposes.';
 
 var packagePath = __dirname.includes('/build') ? '..' : '.';
 var version = require(packagePath + '/package.json').version;
@@ -181,22 +181,23 @@ var restoreDocument = function restoreDocument(collectionName, document) {
   });
 };
 
-var restoreBackup = function restoreBackup(backupPath, restoreAccountDb) {
+var restoreBackup = function restoreBackup(path, restoreAccountDb) {
   var promisesChain = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
 
   var promisesResult = promisesChain;
-  _fs2.default.readdirSync(backupPath).forEach(function (element) {
-    var elementPath = backupPath + '/' + element;
+  _fs2.default.readdirSync(path).forEach(function (element) {
+    var elementPath = path + '/' + element;
     var stats = _fs2.default.statSync(elementPath);
     var isDirectory = stats.isDirectory();
     if (isDirectory) {
       var folderPromises = restoreBackup(elementPath, restoreAccountDb, promisesChain);
       promisesResult.concat(folderPromises);
     } else {
-      var documentId = backupPath.split('/').pop();
-      var pathWithoutId = backupPath.substr(0, backupPath.lastIndexOf('/'));
-      var pathWithoutBackupPath = backupPath.substr(backupPath.indexOf('/'), backupPath.length);
-      var collectionName = pathWithoutBackupPath.substr(0, pathWithoutBackupPath.lastIndexOf('/'));
+      var documentId = path.split('/').pop();
+      var pathWithoutId = path.substr(0, path.lastIndexOf('/'));
+      // remove from the path the global backupPath
+      var pathWithoutBackupPath = pathWithoutId.replace(backupPath, '');
+      var collectionName = pathWithoutBackupPath;
 
       var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + elementPath;
       console.log('' + restoreMsg);
