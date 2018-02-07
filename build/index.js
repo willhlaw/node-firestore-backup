@@ -44,19 +44,23 @@ var accountCredentialsPathParamKey = 'accountCredentials';
 var accountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file';
 
 var backupPathParamKey = 'backupPath';
-var backupPathParamDescription = 'Path to store backup.';
+var backupPathParamDescription = 'Path to store backup';
 
 var restoreAccountCredentialsPathParamKey = 'restoreAccountCredentials';
-var restoreAccountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file for restoring documents.';
+var restoreAccountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file for restoring documents';
 
 var prettyPrintParamKey = 'prettyPrint';
-var prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
+var prettyPrintParamDescription = 'JSON backups done with pretty-printing';
 
 var plainJSONBackupParamKey = 'plainJSONBackup';
-var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information.\n                                          - Lacks full fidelity restore to Firestore.\n                                          - Can be used for other export purposes.';
+var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information\n                                          - Lacks full fidelity restore to Firestore\n                                          - Can be used for other export purposes';
 
 var packagePath = __dirname.includes('/build') ? '..' : '.';
-var version = require(packagePath + '/package.json').version;
+
+var version = 'N/A - unable to read package.json file';
+try {
+  version = require(packagePath + '/package.json').version;
+} catch (requireError) {}
 
 // The data to be restored can replace the existing ones
 // or they can be merged with existing ones
