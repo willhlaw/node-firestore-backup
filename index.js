@@ -31,8 +31,8 @@ const prettyPrintParamKey = 'prettyPrint';
 const prettyPrintParamDescription = 'JSON backups done with pretty-printing.';
 
 const plainJSONBackupParamKey = 'plainJSONBackup';
-const plainJSONBackupParamDescription = `JSON backups done without preserving any type information. 
-                                          - Lacks full fidelity restore to Firestore. 
+const plainJSONBackupParamDescription = `JSON backups done without preserving any type information.
+                                          - Lacks full fidelity restore to Firestore.
                                           - Can be used for other export purposes.`;
 
 const packagePath = __dirname.includes('/build') ? '..' : '.';
@@ -267,13 +267,13 @@ const restoreDocument = (collectionName: string, document: Object) => {
 };
 
 const restoreBackup = (
-  backupPath: string,
+  path: string,
   restoreAccountDb: Object,
   promisesChain: Array = []
 ) => {
   const promisesResult = promisesChain;
-  fs.readdirSync(backupPath).forEach(element => {
-    const elementPath = `${backupPath}/${element}`;
+  fs.readdirSync(path).forEach(element => {
+    const elementPath = `${path}/${element}`;
     const stats = fs.statSync(elementPath);
     const isDirectory = stats.isDirectory();
     if (isDirectory) {
@@ -284,16 +284,11 @@ const restoreBackup = (
       );
       promisesResult.concat(folderPromises);
     } else {
-      const documentId = backupPath.split('/').pop();
-      const pathWithoutId = backupPath.substr(0, backupPath.lastIndexOf('/'));
-      const pathWithoutBackupPath = backupPath.substr(
-        backupPath.indexOf('/'),
-        backupPath.length
-      );
-      const collectionName = pathWithoutBackupPath.substr(
-        0,
-        pathWithoutBackupPath.lastIndexOf('/')
-      );
+      const documentId = path.split('/').pop();
+      const pathWithoutId = path.substr(0, path.lastIndexOf('/'));
+      // remove from the path the global backupPath
+      const pathWithoutBackupPath = pathWithoutId.replace(backupPath, '');
+      const collectionName = pathWithoutBackupPath;
 
       const restoreMsg = `Restoring to collection ${collectionName} document ${elementPath}`;
       console.log(`${restoreMsg}`);
