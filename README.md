@@ -1,6 +1,8 @@
 # firestore-backup-restore
 
-A Google Firebase Firestore backup and restore tool. This project was forked from https://github.com/steadyequipment/node-firestore-backup.git and extended. Node-firestore-backup is an excellent product and this project will stay in sync with its updates by monitoring it with ![Backstroke logo](https://backstroke.co/assets/img/logo.png) [Backstroke](https://backstroke.co/).
+A Google Firebase Firestore backup and restore tool. This project was forked from https://github.com/steadyequipment/node-firestore-backup.git and extended.
+
+You can **backup** your Firestore documents to disk, **clone** data from one Firestore to another, and **restore** from disk.
 
 ## Installation
 
@@ -14,6 +16,12 @@ or [**yarn**](https://yarnpkg.com/en/)
 
 ```sh
 yarn global add firestore-backup-restore
+```
+
+or on the fly
+
+```
+npx firestore-backup-restore
 ```
 
 Alternatively download the source.
@@ -34,11 +42,25 @@ This downloaded json file contains the proper credentials needed for **firestore
 
 ## Usage
 
+### Options:
+
+Usage: firestore-backup-restore [options]
+
+Options:
+
+* `-V`, `--version` output the version number
+* `-a`, `--accountCredentials` `<path>` Google Cloud account credentials JSON file.
+* `-B`, `--backupPath` `<path>` Path to store backup.
+* `-a2`, `--restoreAccountCredentials` `<path>` Google Cloud account credentials JSON file for restoring documents.
+* `-P`, `--prettyPrint` JSON backups done with pretty-printing.
+* `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
+* `-h`, `--help` output usage information
+
 ### Backup:
 
-* `-a`, `--accountCredentials` `<path>` - Google Cloud account credentials JSON file.
-* `-B`, `--backupPath` `<path>`- Path to store the backup.
-* `-a2`, `--restoreAccountCredentials` `<path>` - Google Cloud account credentials JSON file for restoring documents.
+Retrieves data from Firestore specified in `accountCredentials` and saves files to `backupPath`.
+
+As of version 1.2, the default is to save files with each field converted to a `{value, type}` object so that the type information can be preserved and used when restoring to Firestore. Otherwise, a `timestamp` or `reference` would be restored as a `string`. See `-J` or `--plainJSONBackup` to change this default behavior.
 
 Example backup:
 
@@ -46,13 +68,23 @@ Example backup:
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase
 ```
 
-Example backup and restore:
+### Clone:
+
+Move data from Firestore in `accountCredentials` to Firestore specified in `accountRestoreCredentials`.
+
+As of version 1.2, this process still requires `--backupPath` option. This may be a simple change and tested. In fact, there is an [issue](https://github.com/willhlaw/node-firestore-backup-restore/issues/15) marked `good first issue` to fix this if there are any takers.
+
+Example clone:
 
 ```sh
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --restoreAccountCredentials path/to/restore/credentials/file.json
 ```
 
-Example restore a backup:
+### Restore:
+
+If a backup has already been performed, then later, you can restore the backup in `--backupPath` to Firestore specified in `--restoreAccountCredentials`.
+
+Example restore:
 
 ```sh
 firestore-backup-restore --backupPath /backups/myDatabase --restoreAccountCredentials path/to/restore/credentials/file.json
@@ -60,19 +92,101 @@ firestore-backup-restore --backupPath /backups/myDatabase --restoreAccountCreden
 
 ### Backup with pretty printing:
 
+If you want the documents to look pretty on disk and don't mind giving up extra disk space, then use the `--prettyPrint` option.
+
 * `-P`, `--prettyPrint` - JSON backups done with pretty-printing.
-
-### Backup without type information as plain JSON documents:
-
-* `-J`, `--plainJSONBackup` - JSON backups done without preserving any type information.
-
-- Lacks full fidelity restore to Firestore.
-- Can be used for other export purposes.
 
 Example:
 
 ```sh
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --prettyPrint
+```
+
+### Backup without type information as plain JSON documents:
+
+To change the default behavior and backup the Firestore documents as plain JSON documents, use `--plainJSONBackup`.
+
+The default is to save type information. In order for restore to work with full fidelity for field types and to work with clone for `reference`s to be changed from the original Firestore to the destination Firestore, then documents need to be saved to disk in a format that preserves the type information (that is gleaned through inspection by `constructDocumentObjectToBackup` during save). If this default behavior is not wanted and you want the regular JSON document to be saved to disk instead, then use `--plainJSONBackup`.
+
+* `-J`, `--plainJSONBackup` - JSON backups done without preserving any type information
+  * Lacks full fidelity restore to Firestore
+  * Can be used for other export purposes
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --plainJSONBackup
+```
+
+Document saved with `-J` or `--plainJSONBackup` option:
+
+```
+{
+  name: 'UserCreationError',
+  type: 'error',
+  // undefined fields are ignored for Firestore types
+  fooWillBeIgnored: undefined,
+  message: {
+    code: 'ValidationError',
+    _embedded: {
+      errors: [
+        {
+          _links: {},
+          code: 'NotAllowed',
+          path: '/dateOfBirth',
+          message: 'DateOfBirth value not allowed.'
+        }
+      ]
+    },
+    message:
+      'Validation error(s) present. See embedded errors list for more details.'
+  },
+  status: 'read',
+  identifier: 'provider'
+};
+```
+
+Document saved with type information (Default)
+
+```
+{
+  name: { value: 'UserCreationError', type: 'string' },
+  type: { value: 'error', type: 'string' },
+  message: {
+    value: {
+      code: { value: 'ValidationError', type: 'string' },
+      _embedded: {
+        value: {
+          errors: {
+            value: [
+              {
+                value: {
+                  path: { value: '/dateOfBirth', type: 'string' },
+                  message: {
+                    value: 'DateOfBirth value not allowed.',
+                    type: 'string'
+                  },
+                  _links: { value: {}, type: 'object' },
+                  code: { value: 'NotAllowed', type: 'string' }
+                },
+                type: 'object'
+              }
+            ],
+            type: 'array'
+          }
+        },
+        type: 'object'
+      },
+      message: {
+        value:
+          'Validation error(s) present. See embedded errors list for more details.',
+        type: 'string'
+      }
+    },
+    type: 'object'
+  },
+  status: { value: 'read', type: 'string' },
+  identifier: { value: 'provider', type: 'string' }
 ```
 
 ## Contributions

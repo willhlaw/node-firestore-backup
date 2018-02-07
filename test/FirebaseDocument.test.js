@@ -12,7 +12,7 @@ import {
 } from '../lib/FirestoreDocument';
 import { TYPES } from '../lib/FirestoreTypes';
 
-const testFirestoreCredentialsPath = path.join(__dirname, '../creds.jsonn');
+const testFirestoreCredentialsPath = path.join(__dirname, '../creds.json');
 const testFirebaseApp = getFireApp(testFirestoreCredentialsPath);
 // Create firestore object as long as credentials path and fire app was
 // successfully initialized.
@@ -296,6 +296,7 @@ describe('Backup document and then restore document', () => {
       identifier: 'provider'
     };
     const aBackupDocument = {
+      name: { value: 'UserCreationError', type: 'string' },
       type: { value: 'error', type: 'string' },
       message: {
         value: {
@@ -331,8 +332,7 @@ describe('Backup document and then restore document', () => {
         type: 'object'
       },
       status: { value: 'read', type: 'string' },
-      identifier: { value: 'provider', type: 'string' },
-      name: { value: 'UserCreationError', type: 'string' }
+      identifier: { value: 'provider', type: 'string' }
     };
     const firestoreDocument = constructFirestoreDocumentObject(aBackupDocument);
     expect(firestoreDocument).toEqual(aFirestoreDocument);
