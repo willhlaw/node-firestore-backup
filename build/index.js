@@ -33,6 +33,14 @@ var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
 
+var _find = require('find');
+
+var _find2 = _interopRequireDefault(_find);
+
+var _lodash = require('lodash');
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
 var _FirestoreFunctions = require('./lib/FirestoreFunctions');
 
 var _FirestoreDocument = require('./lib/FirestoreDocument');
@@ -40,7 +48,6 @@ var _FirestoreDocument = require('./lib/FirestoreDocument');
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var accountCredentialsPathParamKey = 'accountCredentials';
-
 var accountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file';
 
 var backupPathParamKey = 'backupPath';
@@ -188,39 +195,43 @@ var restoreDocument = function restoreDocument(collectionName, document) {
 var restoreBackup = function restoreBackup(path, restoreAccountDb) {
   var promisesChain = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
 
-  var promisesResult = promisesChain;
-  _fs2.default.readdirSync(path).forEach(function (element) {
-    var elementPath = path + '/' + element;
-    var stats = _fs2.default.statSync(elementPath);
-    var isDirectory = stats.isDirectory();
-    if (isDirectory) {
-      var folderPromises = restoreBackup(elementPath, restoreAccountDb, promisesChain);
-      promisesResult.concat(folderPromises);
-    } else {
-      var documentId = path.split('/').pop();
-      var pathWithoutId = path.substr(0, path.lastIndexOf('/'));
-      // remove from the path the global backupPath
-      var pathWithoutBackupPath = pathWithoutId.replace(backupPath, '');
-      var collectionName = pathWithoutBackupPath;
+  var chunkSize = 20;
+  var absoluteBackupPath = _path2.default.resolve(path);
 
-      var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + elementPath;
-      console.log('' + restoreMsg);
+  var files = _find2.default.fileSync(/\.json$/, absoluteBackupPath);
+  var updateChunks = _lodash2.default.chunk(files, chunkSize);
 
-      var documentDataValue = _fs2.default.readFileSync(elementPath);
-      var documentData = (0, _FirestoreDocument.constructFirestoreDocumentObject)(JSON.parse(documentDataValue), { firestore: restoreAccountDb });
-      promisesResult.push((0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData, { merge: mergeData }).catch(function (saveError) {
-        var saveErrorMsg = '\n !!! Uh-Oh, error saving collection ' + collectionName + ' document ' + elementPath;
-        console.error(saveErrorMsg, saveError);
-        if (!saveError.metadata) {
-          saveError.metadata = {};
-        }
-        saveError.metadata.collectionName = collectionName;
-        saveError.metadata.document = elementPath;
-        return Promise.reject(saveError);
-      }));
-    }
-  });
-  return promisesResult;
+  return promiseSerial(updateChunks.map(function (chunk, chunkNumber) {
+    return function () {
+      var updates = chunk.map(function (filePath) {
+        var path = _path2.default.parse(filePath);
+        var documentId = path.name;
+        // remove from the path the global backupPath
+        var collectionName = _path2.default.join(path.dir, '..').replace(absoluteBackupPath, '');
+
+        // console.log(`Restoring to collection ${collectionName} document ${filePath}`);
+        // console.log('');
+
+        var documentDataValue = _fs2.default.readFileSync(filePath);
+        var documentData = (0, _FirestoreDocument.constructFirestoreDocumentObject)(JSON.parse(documentDataValue), { firestore: restoreAccountDb });
+
+        return (0, _FirestoreDocument.saveDocument)(restoreAccountDb, collectionName, documentId, documentData, { merge: mergeData }).catch(function (saveError) {
+          var saveErrorMsg = '\n !!! Uh-Oh, error saving collection ' + collectionName + ' document ' + filePath;
+          console.error(saveErrorMsg, saveError);
+          if (!saveError.metadata) {
+            saveError.metadata = {};
+          }
+          saveError.metadata.collectionName = collectionName;
+          saveError.metadata.document = filePath;
+          return Promise.reject(saveError);
+        });
+      });
+      return Promise.all(updates).then(function (val) {
+        console.log('Restored ' + chunkNumber / updateChunks.length * 100 + '%');
+        return val;
+      });
+    };
+  }));
 };
 
 var mustExecuteBackup = !!accountDb || !!accountDb && !!restoreAccountDb;
@@ -237,7 +248,7 @@ if (mustExecuteBackup) {
 var mustExecuteRestore = !accountDb && !!restoreAccountDb && !!backupPath;
 if (mustExecuteRestore) {
   var promisesRes = restoreBackup(backupPath, restoreAccountDb);
-  Promise.all(promisesRes).then(function (restoration) {
+  Promise.all([promisesRes]).then(function (restoration) {
     return console.log('\n -- Restore Completed! -- \n');
   }).catch(function (errors) {
     console.log('\n !!! Restore NOT Complete; there were Errors !!!\n');
