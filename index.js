@@ -8,6 +8,9 @@ import fs from 'fs';
 import Firebase from 'firebase-admin';
 import mkdirp from 'mkdirp';
 import path from 'path';
+import find from 'find';
+import _ from 'lodash';
+import pathUtil from 'path';
 
 import { getFireApp } from './lib/FirestoreFunctions';
 import {
@@ -40,7 +43,7 @@ const packagePath = __dirname.includes('/build') ? '..' : '.';
 let version = 'N/A - unable to read package.json file';
 try {
   version = require(`${packagePath}/package.json`).version;
-} catch (requireError) {}
+} catch (requireError) { }
 
 // The data to be restored can replace the existing ones
 // or they can be merged with existing ones
@@ -65,7 +68,7 @@ const accountCredentialsPath = commander[accountCredentialsPathParamKey];
 if (accountCredentialsPath && !fs.existsSync(accountCredentialsPath)) {
   console.log(
     colors.bold(colors.red('Account credentials file does not exist: ')) +
-      colors.bold(accountCredentialsPath)
+    colors.bold(accountCredentialsPath)
   );
   commander.help();
   process.exit(1);
@@ -75,9 +78,9 @@ const backupPath = commander[backupPathParamKey];
 if (!backupPath) {
   console.log(
     colors.bold(colors.red('Missing: ')) +
-      colors.bold(backupPathParamKey) +
-      ' - ' +
-      backupPathParamDescription
+    colors.bold(backupPathParamKey) +
+    ' - ' +
+    backupPathParamDescription
   );
   commander.help();
   process.exit(1);
@@ -115,9 +118,9 @@ try {
 } catch (error) {
   console.log(
     colors.bold(colors.red('Unable to create backup path: ')) +
-      colors.bold(backupPath) +
-      ' - ' +
-      error
+    colors.bold(backupPath) +
+    ' - ' +
+    error
   );
   process.exit(1);
 }
@@ -144,12 +147,12 @@ const backupDocument = (
 ): Promise<any> => {
   console.log(
     "Backing up Document '" +
-      logPath +
-      document.id +
-      "'" +
-      (plainJSONBackup === true
-        ? ' with -J --plainJSONBackup'
-        : ' with type information')
+    logPath +
+    document.id +
+    "'" +
+    (plainJSONBackup === true
+      ? ' with -J --plainJSONBackup'
+      : ' with type information')
   );
 
   try {
@@ -184,13 +187,13 @@ const backupDocument = (
       colors.bold(
         colors.red(
           "Unable to create backup path or write file, skipping backup of Document '" +
-            document.id +
-            "': "
+          document.id +
+          "': "
         )
       ) +
-        colors.bold(backupPath) +
-        ' - ' +
-        error
+      colors.bold(backupPath) +
+      ' - ' +
+      error
     );
     return Promise.reject(error);
   }
@@ -232,13 +235,13 @@ const backupCollection = (
       colors.bold(
         colors.red(
           "Unable to create backup path, skipping backup of Collection '" +
-            collection.id +
-            "': "
+          collection.id +
+          "': "
         )
       ) +
-        colors.bold(backupPath) +
-        ' - ' +
-        error
+      colors.bold(backupPath) +
+      ' - ' +
+      error
     );
     return Promise.reject(error);
   }
@@ -253,16 +256,16 @@ export const restoreAccountDb = restoreAccountCredentialsPath
 const restoreDocument = (collectionName: string, document: Object) => {
   const restoreMsg = `Restoring to collection ${collectionName} document ${
     document.id
-  }`;
+    }`;
   console.log(`${restoreMsg}...`);
   return Promise.resolve(
     // TODO: use saveDocument using merge as an option
     !restoreAccountDb
       ? null
       : restoreAccountDb
-          .collection(collectionName)
-          .doc(document.id)
-          .set(document.data())
+        .collection(collectionName)
+        .doc(document.id)
+        .set(document.data())
   ).catch(error => {
     console.log(
       colors.bold(colors.red(`Error! ${restoreMsg}` + ' - ' + error))
@@ -272,57 +275,57 @@ const restoreDocument = (collectionName: string, document: Object) => {
 
 const restoreBackup = (
   path: string,
-  restoreAccountDb: Object,
-  promisesChain: Array = []
+  restoreAccountDb: Object
 ) => {
-  const promisesResult = promisesChain;
-  fs.readdirSync(path).forEach(element => {
-    const elementPath = `${path}/${element}`;
-    const stats = fs.statSync(elementPath);
-    const isDirectory = stats.isDirectory();
-    if (isDirectory) {
-      const folderPromises = restoreBackup(
-        elementPath,
-        restoreAccountDb,
-        promisesChain
-      );
-      promisesResult.concat(folderPromises);
-    } else {
-      const documentId = path.split('/').pop();
-      const pathWithoutId = path.substr(0, path.lastIndexOf('/'));
-      // remove from the path the global backupPath
-      const pathWithoutBackupPath = pathWithoutId.replace(backupPath, '');
-      const collectionName = pathWithoutBackupPath;
+  const chunkSize = 20;
+  const absoluteBackupPath = pathUtil.resolve(path);
 
-      const restoreMsg = `Restoring to collection ${collectionName} document ${elementPath}`;
-      console.log(`${restoreMsg}`);
+  const files = find.fileSync(/\.json$/, absoluteBackupPath);
+  const updateChunks = _.chunk(files, chunkSize);
 
-      const documentDataValue = fs.readFileSync(elementPath);
-      const documentData = constructFirestoreDocumentObject(
-        JSON.parse(documentDataValue),
-        { firestore: restoreAccountDb }
-      );
-      promisesResult.push(
-        saveDocument(
+  return promiseSerial(
+    updateChunks.map((chunk, chunkNumber) => () => {
+      const updates = chunk.map(filePath => {
+        const path = pathUtil.parse(filePath);
+        const documentId = path.name;
+        // remove from the path the global backupPath
+        const collectionName = pathUtil
+          .join(path.dir, '..')
+          .replace(absoluteBackupPath, '');
+
+        // console.log(`Restoring to collection ${collectionName} document ${filePath}`);
+        // console.log('');
+
+        const documentDataValue = fs.readFileSync(filePath);
+        const documentData = constructFirestoreDocumentObject(
+          JSON.parse(documentDataValue),
+          { firestore: restoreAccountDb }
+        );
+
+        return saveDocument(
           restoreAccountDb,
           collectionName,
           documentId,
           documentData,
           { merge: mergeData }
         ).catch(saveError => {
-          const saveErrorMsg = `\n !!! Uh-Oh, error saving collection ${collectionName} document ${elementPath}`;
+          const saveErrorMsg = `\n !!! Uh-Oh, error saving collection ${collectionName} document ${filePath}`;
           console.error(saveErrorMsg, saveError);
           if (!saveError.metadata) {
             saveError.metadata = {};
           }
           saveError.metadata.collectionName = collectionName;
-          saveError.metadata.document = elementPath;
+          saveError.metadata.document = filePath;
           return Promise.reject(saveError);
         })
-      );
-    }
-  });
-  return promisesResult;
+      })
+      return Promise.all(updates)
+        .then((val) => {
+          console.log(`Restored ${(chunkNumber / updateChunks.length) * 100}%`)
+          return val
+        })
+    })
+  );
 };
 
 const mustExecuteBackup: boolean =
@@ -346,8 +349,7 @@ if (mustExecuteBackup) {
 const mustExecuteRestore: boolean =
   !accountDb && !!restoreAccountDb && !!backupPath;
 if (mustExecuteRestore) {
-  const promisesRes = restoreBackup(backupPath, restoreAccountDb);
-  Promise.all(promisesRes)
+  restoreBackup(backupPath, restoreAccountDb)
     .then(restoration => console.log(`\n -- Restore Completed! -- \n`))
     .catch(errors => {
       console.log(`\n !!! Restore NOT Complete; there were Errors !!!\n`);
