@@ -53,6 +53,7 @@ Options:
 * `-B`, `--backupPath` `<path>` Path to store backup.
 * `-a2`, `--restoreAccountCredentials` `<path>` Google Cloud account credentials JSON file for restoring documents.
 * `-P`, `--prettyPrint` JSON backups done with pretty-printing.
+* `-S`, `--stable` JSON backups done with stable-stringify.
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
 
@@ -100,6 +101,18 @@ Example:
 
 ```sh
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --prettyPrint
+```
+
+### Backup with stable stringify:
+
+If you want the json documents to have sorted keys, then use the `--stable` option.
+
+* `-S`, `--stable` - JSON backups done with stable-stringify.
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --stable
 ```
 
 ### Backup without type information as plain JSON documents:
