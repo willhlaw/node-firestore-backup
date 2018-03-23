@@ -8,6 +8,7 @@ import fs from 'fs';
 import Firebase from 'firebase-admin';
 import mkdirp from 'mkdirp';
 import path from 'path';
+import stringify from 'json-stable-stringify';
 
 import { getFireApp } from './lib/FirestoreFunctions';
 import {
@@ -29,6 +30,9 @@ const restoreAccountCredentialsPathParamDescription =
 
 const prettyPrintParamKey = 'prettyPrint';
 const prettyPrintParamDescription = 'JSON backups done with pretty-printing';
+
+const stableParamKey = 'stable';
+const stableParamParamDescription = 'JSON backups done with stable-stringify';
 
 const plainJSONBackupParamKey = 'plainJSONBackup';
 const plainJSONBackupParamDescription = `JSON backups done without preserving any type information
@@ -58,6 +62,8 @@ commander
     restoreAccountCredentialsPathParamDescription
   )
   .option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription)
+  .option('-S, --' + stableParamKey, stableParamParamDescription)
+
   .option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription)
   .parse(process.argv);
 
@@ -101,6 +107,10 @@ if (
 const prettyPrint =
   commander[prettyPrintParamKey] !== undefined &&
   commander[prettyPrintParamKey] !== null;
+
+const stable =
+  commander[stableParamKey] !== undefined &&
+  commander[stableParamKey] !== null;
 
 const plainJSONBackup =
   commander[plainJSONBackupParamKey] !== undefined &&
@@ -160,9 +170,17 @@ const backupDocument = (
         ? document.data()
         : constructDocumentObjectToBackup(document.data());
     if (prettyPrint === true) {
-      fileContents = JSON.stringify(documentBackup, null, 2);
+      if (stable === true) {
+        fileContents = stringify(documentBackup, { space: 2 });
+      } else {
+        fileContents = JSON.stringify(documentBackup, null, 2);
+      }
     } else {
-      fileContents = JSON.stringify(documentBackup);
+      if (stable === true) {
+        fileContents = stringify(documentBackup);
+      } else {
+        fileContents = JSON.stringify(documentBackup);
+      }
     }
     fs.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 

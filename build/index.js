@@ -33,6 +33,10 @@ var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
 
+var _jsonStableStringify = require('json-stable-stringify');
+
+var _jsonStableStringify2 = _interopRequireDefault(_jsonStableStringify);
+
 var _FirestoreFunctions = require('./lib/FirestoreFunctions');
 
 var _FirestoreDocument = require('./lib/FirestoreDocument');
@@ -40,7 +44,6 @@ var _FirestoreDocument = require('./lib/FirestoreDocument');
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var accountCredentialsPathParamKey = 'accountCredentials';
-
 var accountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file';
 
 var backupPathParamKey = 'backupPath';
@@ -51,6 +54,9 @@ var restoreAccountCredentialsPathParamDescription = 'Google Cloud account creden
 
 var prettyPrintParamKey = 'prettyPrint';
 var prettyPrintParamDescription = 'JSON backups done with pretty-printing';
+
+var stableParamKey = 'stable';
+var stableParamParamDescription = 'JSON backups done with stable-stringify';
 
 var plainJSONBackupParamKey = 'plainJSONBackup';
 var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information\n                                          - Lacks full fidelity restore to Firestore\n                                          - Can be used for other export purposes';
@@ -66,7 +72,7 @@ try {
 // or they can be merged with existing ones
 var mergeData = false;
 
-_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).parse(_process2.default.argv);
+_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-S, --' + stableParamKey, stableParamParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).parse(_process2.default.argv);
 
 var accountCredentialsPath = _commander2.default[accountCredentialsPathParamKey];
 if (accountCredentialsPath && !_fs2.default.existsSync(accountCredentialsPath)) {
@@ -90,6 +96,8 @@ if (restoreAccountCredentialsPath && !_fs2.default.existsSync(restoreAccountCred
 }
 
 var prettyPrint = _commander2.default[prettyPrintParamKey] !== undefined && _commander2.default[prettyPrintParamKey] !== null;
+
+var stable = _commander2.default[stableParamKey] !== undefined && _commander2.default[stableParamKey] !== null;
 
 var plainJSONBackup = _commander2.default[plainJSONBackupParamKey] !== undefined && _commander2.default[plainJSONBackupParamKey] !== null;
 
@@ -123,9 +131,17 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
     var fileContents = void 0;
     var documentBackup = plainJSONBackup === true ? document.data() : (0, _FirestoreDocument.constructDocumentObjectToBackup)(document.data());
     if (prettyPrint === true) {
-      fileContents = JSON.stringify(documentBackup, null, 2);
+      if (stable === true) {
+        fileContents = (0, _jsonStableStringify2.default)(documentBackup, { space: 2 });
+      } else {
+        fileContents = JSON.stringify(documentBackup, null, 2);
+      }
     } else {
-      fileContents = JSON.stringify(documentBackup);
+      if (stable === true) {
+        fileContents = (0, _jsonStableStringify2.default)(documentBackup);
+      } else {
+        fileContents = JSON.stringify(documentBackup);
+      }
     }
     _fs2.default.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 
