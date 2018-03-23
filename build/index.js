@@ -33,6 +33,10 @@ var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
 
+var _jsonStableStringify = require('json-stable-stringify');
+
+var _jsonStableStringify2 = _interopRequireDefault(_jsonStableStringify);
+
 var _FirestoreFunctions = require('./lib/FirestoreFunctions');
 
 var _FirestoreDocument = require('./lib/FirestoreDocument');
@@ -40,7 +44,6 @@ var _FirestoreDocument = require('./lib/FirestoreDocument');
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var accountCredentialsPathParamKey = 'accountCredentials';
-
 var accountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file';
 
 var backupPathParamKey = 'backupPath';
@@ -123,9 +126,9 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
     var fileContents = void 0;
     var documentBackup = plainJSONBackup === true ? document.data() : (0, _FirestoreDocument.constructDocumentObjectToBackup)(document.data());
     if (prettyPrint === true) {
-      fileContents = JSON.stringify(documentBackup, null, 2);
+      fileContents = (0, _jsonStableStringify2.default)(documentBackup, { space: 2 });
     } else {
-      fileContents = JSON.stringify(documentBackup);
+      fileContents = (0, _jsonStableStringify2.default)(documentBackup);
     }
     _fs2.default.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 

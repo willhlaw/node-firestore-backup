@@ -8,6 +8,7 @@ import fs from 'fs';
 import Firebase from 'firebase-admin';
 import mkdirp from 'mkdirp';
 import path from 'path';
+import stringify from 'json-stable-stringify';
 
 import { getFireApp } from './lib/FirestoreFunctions';
 import {
@@ -160,9 +161,9 @@ const backupDocument = (
         ? document.data()
         : constructDocumentObjectToBackup(document.data());
     if (prettyPrint === true) {
-      fileContents = JSON.stringify(documentBackup, null, 2);
+      fileContents = stringify(documentBackup, { space: 2 });
     } else {
-      fileContents = JSON.stringify(documentBackup);
+      fileContents = stringify(documentBackup);
     }
     fs.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 
