@@ -171,10 +171,10 @@ var constructDocumentObjectToBackup = exports.constructDocumentObjectToBackup = 
       documentDataToStore = Object.assign({}, documentDataToStore, (0, _defineProperty3.default)({}, key, (0, _types.isNull)(value)));
     } else if ((0, _types.isString)(value)) {
       documentDataToStore = Object.assign({}, documentDataToStore, (0, _defineProperty3.default)({}, key, (0, _types.isString)(value)));
-    } else if ((0, _types.isDocumentReference)(value)) {
-      documentDataToStore = Object.assign({}, documentDataToStore, (0, _defineProperty3.default)({}, key, (0, _types.isDocumentReference)(value)));
     } else if ((0, _types.isGeopoint)(value)) {
       documentDataToStore = Object.assign({}, documentDataToStore, (0, _defineProperty3.default)({}, key, (0, _types.isGeopoint)(value)));
+    } else if ((0, _types.isDocumentReference)(value)) {
+      documentDataToStore = Object.assign({}, documentDataToStore, (0, _defineProperty3.default)({}, key, (0, _types.isDocumentReference)(value)));
     } else {
       console.warn('Unsupported value type for {' + key + ': ' + value + '}');
     }
