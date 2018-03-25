@@ -1,21 +1,19 @@
 /* @flow */
 
-import commander from 'commander';
-import colors from 'colors';
+import commander from 'commander'
+import colors from 'colors'
 
-import process from 'process';
-import fs from 'fs';
-import Firebase from 'firebase-admin';
-import mkdirp from 'mkdirp';
-import path from 'path';
-import stringify from 'json-stable-stringify';
+import process from 'process'
+import fs from 'fs'
+import mkdirp from 'mkdirp'
+import stringify from 'json-stable-stringify'
 
-import { getFireApp } from './lib/FirestoreFunctions';
+import { getFireApp } from './lib/FirestoreFunctions'
 import {
-  constructFirestoreDocumentObject,
   constructDocumentObjectToBackup,
+  constructFirestoreDocumentObject,
   saveDocument
-} from './lib/FirestoreDocument';
+} from './lib/FirestoreDocument'
 
 const accountCredentialsPathParamKey = 'accountCredentials';
 const accountCredentialsPathParamDescription =
@@ -273,6 +271,8 @@ const restoreDocument = (collectionName: string, document: Object) => {
     document.id
   }`;
   console.log(`${restoreMsg}...`);
+  const documentData = constructDocumentObjectToBackup(document.data())
+  const documentObject = constructFirestoreDocumentObject(documentData, {firestore: restoreAccountDb})
   return Promise.resolve(
     // TODO: use saveDocument using merge as an option
     !restoreAccountDb
@@ -280,7 +280,7 @@ const restoreDocument = (collectionName: string, document: Object) => {
       : restoreAccountDb
           .collection(collectionName)
           .doc(document.id)
-          .set(document.data())
+          .set(documentObject)
   ).catch(error => {
     console.log(
       colors.bold(colors.red(`Error! ${restoreMsg}` + ' - ' + error))
