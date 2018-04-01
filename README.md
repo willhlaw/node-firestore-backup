@@ -202,6 +202,31 @@ Document saved with type information (Default)
   identifier: { value: 'provider', type: 'string' }
 ```
 
+### Apply a transformation function to documents before backup or restoration
+
+To apply a transformation function before either writing to disk (so you can verify the schema migration) or before restoring to Firestore use the `--transformFn` option.
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --transformFn path/to/transformation/function.js
+```
+
+The file passed as option will export a module, which, the value to export by default will be the transformation function. This transformation function should return a promise, and receive a object as parameter, which can contain the following fields:
+
+* `accountDb` {Object} Firestore database instance from where the backup is made
+
+* `restoreAccountDb` {Object} Firestore database instance where the backup is restored
+
+* `collectionPath` {Array} Array that contains the path of the collection
+
+* `docId` {String} Id of the document, where the function will be applied
+
+* `docData` {Object} Document data with "backup" format, specified below
+
+And you can use what you think is convenient for your purpose. The `docData` object will use the format `NAME_KEY: { "value": VALUE, "type": TYPE }` for each field.
+
+The allowed types are:
+'string', 'number', 'boolean', 'object', 'array', 'null', 'timestamp', 'geopoint', 'documentReference'
+
 ## Contributions
 
 Feel free to report bugs in the [Issue Tracker](https://github.com/willhlaw/node-firestore-backup-restore/issues), fork and create pull requests!

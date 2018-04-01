@@ -39,6 +39,9 @@ const plainJSONBackupParamDescription = `JSON backups done without preserving an
                                           - Lacks full fidelity restore to Firestore
                                           - Can be used for other export purposes`;
 
+const transformFnParamKey = 'transformFn';
+const transformFnParamDescription = `Transformation function for schema migrations`;
+
 const packagePath = __dirname.includes('/build') ? '..' : '.';
 
 let version = 'N/A - unable to read package.json file';
@@ -65,7 +68,22 @@ commander
   .option('-S, --' + stableParamKey, stableParamParamDescription)
 
   .option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription)
+  .option(
+    '-T, --' + transformFnParamKey + ' <path>',
+    transformFnParamDescription
+  )
   .parse(process.argv);
+
+const transformFnPath = commander[transformFnParamKey];
+let transformFn;
+if (!!transformFnPath) {
+  try {
+    transformFn = require(transformFnPath).default;
+  } catch (e) {
+    throw new Error(`The transformation function file doesn't exists!`);
+  }
+}
+const executeTranformFn = !!commander[transformFnParamKey] && !!transformFn;
 
 const accountCredentialsPath = commander[accountCredentialsPathParamKey];
 if (accountCredentialsPath && !fs.existsSync(accountCredentialsPath)) {
@@ -109,8 +127,7 @@ const prettyPrint =
   commander[prettyPrintParamKey] !== null;
 
 const stable =
-  commander[stableParamKey] !== undefined &&
-  commander[stableParamKey] !== null;
+  commander[stableParamKey] !== undefined && commander[stableParamKey] !== null;
 
 const plainJSONBackup =
   commander[plainJSONBackupParamKey] !== undefined &&
@@ -147,7 +164,22 @@ const promiseSerial = funcs => {
   }, Promise.resolve([]));
 };
 
-const backupDocument = (
+const getTransformedDocument = async (collectionPath, document) => {
+  const backupDocObject = constructDocumentObjectToBackup(document.data());
+  const obj = !!executeTranformFn
+    ? transformFn({
+        accountDb,
+        restoreAccountDb,
+        collectionPath,
+        docId: document.id,
+        docData: backupDocObject
+      })
+    : Promise.resolve(backupDocObject);
+  return await obj;
+};
+
+const backupDocument = async (
+  collectionPath: Array,
   document: Object,
   backupPath: string,
   logPath: string
@@ -165,10 +197,13 @@ const backupDocument = (
   try {
     mkdirp.sync(backupPath);
     let fileContents: string;
+    const transformedDocument = await getTransformedDocument(
+      collectionPath,
+      document
+    );
     const documentBackup =
-      plainJSONBackup === true
-        ? document.data()
-        : constructDocumentObjectToBackup(document.data());
+      plainJSONBackup === true ? document.data() : transformedDocument;
+
     if (prettyPrint === true) {
       if (stable === true) {
         fileContents = stringify(documentBackup, { space: 2 });
@@ -234,12 +269,14 @@ const backupCollection = (
       const backupFunctions = [];
       snapshots.forEach(document => {
         backupFunctions.push(() => {
+          const collectionPath = collection._referencePath.segments;
           const backupDocumentPromise = backupDocument(
+            collectionPath,
             document,
             backupPath + '/' + document.id,
             logPath + collection.id + '/'
           );
-          restoreDocument(logPath + collection.id, document);
+          restoreDocument(logPath + collection.id, collectionPath, document);
           return backupDocumentPromise;
         });
       });
@@ -268,11 +305,24 @@ export const restoreAccountDb = restoreAccountCredentialsPath
   ? restoreAccountApp.firestore()
   : null;
 
-const restoreDocument = (collectionName: string, document: Object) => {
+const restoreDocument = async (
+  collectionName: string,
+  collectionPath: Array,
+  document: Object
+) => {
+  if (!restoreAccountDb) return null;
   const restoreMsg = `Restoring to collection ${collectionName} document ${
     document.id
   }`;
   console.log(`${restoreMsg}...`);
+  const documentData = constructDocumentObjectToBackup(document.data());
+  const transformedDocument = await getTransformedDocument(
+    collectionPath,
+    document
+  );
+  const documentObject = constructFirestoreDocumentObject(transformedDocument, {
+    firestore: restoreAccountDb
+  });
   return Promise.resolve(
     // TODO: use saveDocument using merge as an option
     !restoreAccountDb
@@ -280,7 +330,7 @@ const restoreDocument = (collectionName: string, document: Object) => {
       : restoreAccountDb
           .collection(collectionName)
           .doc(document.id)
-          .set(document.data())
+          .set(documentObject)
   ).catch(error => {
     console.log(
       colors.bold(colors.red(`Error! ${restoreMsg}` + ' - ' + error))
