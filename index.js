@@ -164,7 +164,10 @@ const promiseSerial = funcs => {
   }, Promise.resolve([]));
 };
 
-const getTransformedDocument = async (collectionPath, document) => {
+const getTransformedDocument = async (
+  collectionPath: Array,
+  document: Object
+) => {
   const backupDocObject = constructDocumentObjectToBackup(document.data());
   const obj = !!executeTranformFn
     ? transformFn({
