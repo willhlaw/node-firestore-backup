@@ -56,6 +56,7 @@ Options:
 * `-S`, `--stable` JSON backups done with stable-stringify.
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
+* `-T`, `--transformFn` Path to a script file that exports a transformation function for schema migrations.
 
 ### Backup:
 
@@ -210,6 +211,8 @@ To apply a transformation function before either writing to disk (so you can ver
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --transformFn path/to/transformation/function.js
 ```
 
+The transformation function will only be applied to the backup created without the `--plainJSONBackup` option.
+
 The file passed as option will export a module, which, the value to export by default will be the transformation function. This transformation function should return a promise, and receive a object as parameter, which can contain the following fields:
 
 * `accountDb` {Object} Firestore database instance from where the backup is made
@@ -226,6 +229,41 @@ And you can use what you think is convenient for your purpose. The `docData` obj
 
 The allowed types are:
 'string', 'number', 'boolean', 'object', 'array', 'null', 'timestamp', 'geopoint', 'documentReference'
+
+Examples of a transformation function:
+
+* To rename a field called MyCompany, to company in all the documents of Companies
+
+  ```javascript
+  const transformFn = async ({
+    accountDb,
+    restoreAccountDb,
+    collectionPath,
+    docId,
+    docData
+  }) => {
+    const operationByCollection = {
+      Companies: function(companyDoc) {
+        const docResult = companyDoc;
+        if (!companyDoc.MyCompany) return Promise.resolve(docResult);
+        docResult.company = {
+          value: docResult.MyCompany.value,
+          type: 'documentReference'
+        };
+        delete docResult.MyCompany;
+        return Promise.resolve(docResult);
+      }
+    };
+    const collectionName = collectionPath[collectionPath.length - 1]; // take the last one
+    if (!operationByCollection[collectionName]) {
+      console.log(`There is not a transformation for ${collectionName}`);
+      return docData;
+    }
+    return await operationByCollection[collectionName](docData);
+  };
+
+  export default transformFn;
+  ```
 
 ## Contributions
 
