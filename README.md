@@ -56,6 +56,7 @@ Options:
 * `-S`, `--stable` JSON backups done with stable-stringify.
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
+* `-T`, `--transformFn` Path to a script file that exports a transformation function for schema migrations.
 
 ### Backup:
 
@@ -201,6 +202,68 @@ Document saved with type information (Default)
   status: { value: 'read', type: 'string' },
   identifier: { value: 'provider', type: 'string' }
 ```
+
+### Apply a transformation function to documents before backup or restoration
+
+To apply a transformation function before either writing to disk (so you can verify the schema migration) or before restoring to Firestore use the `--transformFn` option.
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --transformFn path/to/transformation/function.js
+```
+
+The transformation function will only be applied to the backup created without the `--plainJSONBackup` option.
+
+The file passed as option will export a module, which, the value to export by default will be the transformation function. This transformation function should return a promise, and receive a object as parameter, which can contain the following fields:
+
+* `accountDb` {Object} Firestore database instance from where the backup is made
+
+* `restoreAccountDb` {Object} Firestore database instance where the backup is restored
+
+* `collectionPath` {Array} Array that contains the path of the collection
+
+* `docId` {String} Id of the document, where the function will be applied
+
+* `docData` {Object} Document data with "backup" format, specified below
+
+And you can use what you think is convenient for your purpose. The `docData` object will use the format `NAME_KEY: { "value": VALUE, "type": TYPE }` for each field.
+
+The allowed types are:
+'string', 'number', 'boolean', 'object', 'array', 'null', 'timestamp', 'geopoint', 'documentReference'
+
+Examples of a transformation function:
+
+* To rename a field called MyCompany, to company in all the documents of Companies
+
+  ```javascript
+  const transformFn = async ({
+    accountDb,
+    restoreAccountDb,
+    collectionPath,
+    docId,
+    docData
+  }) => {
+    const operationByCollection = {
+      Companies: function(companyDoc) {
+        const docResult = companyDoc;
+        if (!companyDoc.MyCompany) return Promise.resolve(docResult);
+        docResult.company = {
+          value: docResult.MyCompany.value,
+          type: 'documentReference'
+        };
+        delete docResult.MyCompany;
+        return Promise.resolve(docResult);
+      }
+    };
+    const collectionName = collectionPath[collectionPath.length - 1]; // take the last one
+    if (!operationByCollection[collectionName]) {
+      console.log(`There is not a transformation for ${collectionName}`);
+      return docData;
+    }
+    return await operationByCollection[collectionName](docData);
+  };
+
+  export default transformFn;
+  ```
 
 ## Contributions
 
