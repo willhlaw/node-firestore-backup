@@ -185,7 +185,8 @@ const backupDocument = async (
   collectionPath: Array,
   document: Object,
   backupPath: string,
-  logPath: string
+  logPath: string,
+  documentBackup: Object
 ): Promise<any> => {
   console.log(
     "Backing up Document '" +
@@ -200,12 +201,6 @@ const backupDocument = async (
   try {
     mkdirp.sync(backupPath);
     let fileContents: string;
-    const transformedDocument = await getTransformedDocument(
-      collectionPath,
-      document
-    );
-    const documentBackup =
-      plainJSONBackup === true ? document.data() : transformedDocument;
 
     if (prettyPrint === true) {
       if (stable === true) {
@@ -271,15 +266,29 @@ const backupCollection = (
     return collection.get().then(snapshots => {
       const backupFunctions = [];
       snapshots.forEach(document => {
-        backupFunctions.push(() => {
+        backupFunctions.push(async () => {
           const collectionPath = collection._referencePath.segments;
+          let documentData = document.data();
+          if (!!executeTranformFn && !plainJSONBackup) {
+            const transformedDocument = await getTransformedDocument(
+              collectionPath,
+              document
+            );
+            documentData = transformedDocument;
+          }
           const backupDocumentPromise = backupDocument(
             collectionPath,
             document,
             backupPath + '/' + document.id,
-            logPath + collection.id + '/'
+            logPath + collection.id + '/',
+            documentData
           );
-          restoreDocument(logPath + collection.id, collectionPath, document);
+          restoreDocument(
+            logPath + collection.id,
+            collectionPath,
+            document,
+            documentData
+          );
           return backupDocumentPromise;
         });
       });
@@ -311,19 +320,15 @@ export const restoreAccountDb = restoreAccountCredentialsPath
 const restoreDocument = async (
   collectionName: string,
   collectionPath: Array,
-  document: Object
+  document: Object,
+  documentData: Object
 ) => {
   if (!restoreAccountDb) return null;
   const restoreMsg = `Restoring to collection ${collectionName} document ${
     document.id
   }`;
   console.log(`${restoreMsg}...`);
-  const documentData = constructDocumentObjectToBackup(document.data());
-  const transformedDocument = await getTransformedDocument(
-    collectionPath,
-    document
-  );
-  const documentObject = constructFirestoreDocumentObject(transformedDocument, {
+  const documentObject = constructFirestoreDocumentObject(documentData, {
     firestore: restoreAccountDb
   });
   return Promise.resolve(

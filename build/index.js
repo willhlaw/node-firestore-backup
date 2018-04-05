@@ -180,8 +180,8 @@ var getTransformedDocument = function () {
 }();
 
 var backupDocument = function () {
-  var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(collectionPath, document, backupPath, logPath) {
-    var fileContents, transformedDocument, documentBackup;
+  var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(collectionPath, document, backupPath, logPath, documentBackup) {
+    var fileContents;
     return _regenerator2.default.wrap(function _callee2$(_context2) {
       while (1) {
         switch (_context2.prev = _context2.next) {
@@ -192,12 +192,6 @@ var backupDocument = function () {
 
             _mkdirp2.default.sync(backupPath);
             fileContents = void 0;
-            _context2.next = 6;
-            return getTransformedDocument(collectionPath, document);
-
-          case 6:
-            transformedDocument = _context2.sent;
-            documentBackup = plainJSONBackup === true ? document.data() : transformedDocument;
 
 
             if (prettyPrint === true) {
@@ -223,22 +217,22 @@ var backupDocument = function () {
               }));
             }));
 
-          case 13:
-            _context2.prev = 13;
+          case 9:
+            _context2.prev = 9;
             _context2.t0 = _context2['catch'](1);
 
             console.log(_colors2.default.bold(_colors2.default.red("Unable to create backup path or write file, skipping backup of Document '" + document.id + "': ")) + _colors2.default.bold(backupPath) + ' - ' + _context2.t0);
             return _context2.abrupt('return', Promise.reject(_context2.t0));
 
-          case 17:
+          case 13:
           case 'end':
             return _context2.stop();
         }
       }
-    }, _callee2, undefined, [[1, 13]]);
+    }, _callee2, undefined, [[1, 9]]);
   }));
 
-  return function backupDocument(_x3, _x4, _x5, _x6) {
+  return function backupDocument(_x3, _x4, _x5, _x6, _x7) {
     return _ref2.apply(this, arguments);
   };
 }();
@@ -258,12 +252,41 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
     return collection.get().then(function (snapshots) {
       var backupFunctions = [];
       snapshots.forEach(function (document) {
-        backupFunctions.push(function () {
-          var collectionPath = collection._referencePath.segments;
-          var backupDocumentPromise = backupDocument(collectionPath, document, backupPath + '/' + document.id, logPath + collection.id + '/');
-          restoreDocument(logPath + collection.id, collectionPath, document);
-          return backupDocumentPromise;
-        });
+        backupFunctions.push((0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
+          var collectionPath, documentData, transformedDocument, backupDocumentPromise;
+          return _regenerator2.default.wrap(function _callee3$(_context3) {
+            while (1) {
+              switch (_context3.prev = _context3.next) {
+                case 0:
+                  collectionPath = collection._referencePath.segments;
+                  documentData = document.data();
+
+                  if (!(!!executeTranformFn && !plainJSONBackup)) {
+                    _context3.next = 7;
+                    break;
+                  }
+
+                  _context3.next = 5;
+                  return getTransformedDocument(collectionPath, document);
+
+                case 5:
+                  transformedDocument = _context3.sent;
+
+                  documentData = transformedDocument;
+
+                case 7:
+                  backupDocumentPromise = backupDocument(collectionPath, document, backupPath + '/' + document.id, logPath + collection.id + '/', documentData);
+
+                  restoreDocument(logPath + collection.id, collectionPath, document, documentData);
+                  return _context3.abrupt('return', backupDocumentPromise);
+
+                case 10:
+                case 'end':
+                  return _context3.stop();
+              }
+            }
+          }, _callee3, undefined);
+        })));
       });
       return promiseSerial(backupFunctions);
     });
@@ -278,48 +301,42 @@ var accountDb = accountCredentialsPath ? accountApp.firestore() : null;
 var restoreAccountDb = exports.restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
 
 var restoreDocument = function () {
-  var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3(collectionName, collectionPath, document) {
-    var restoreMsg, documentData, transformedDocument, documentObject;
-    return _regenerator2.default.wrap(function _callee3$(_context3) {
+  var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4(collectionName, collectionPath, document, documentData) {
+    var restoreMsg, documentObject;
+    return _regenerator2.default.wrap(function _callee4$(_context4) {
       while (1) {
-        switch (_context3.prev = _context3.next) {
+        switch (_context4.prev = _context4.next) {
           case 0:
             if (restoreAccountDb) {
-              _context3.next = 2;
+              _context4.next = 2;
               break;
             }
 
-            return _context3.abrupt('return', null);
+            return _context4.abrupt('return', null);
 
           case 2:
             restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + document.id;
 
             console.log(restoreMsg + '...');
-            documentData = (0, _FirestoreDocument.constructDocumentObjectToBackup)(document.data());
-            _context3.next = 7;
-            return getTransformedDocument(collectionPath, document);
-
-          case 7:
-            transformedDocument = _context3.sent;
-            documentObject = (0, _FirestoreDocument.constructFirestoreDocumentObject)(transformedDocument, {
+            documentObject = (0, _FirestoreDocument.constructFirestoreDocumentObject)(documentData, {
               firestore: restoreAccountDb
             });
-            return _context3.abrupt('return', Promise.resolve(
+            return _context4.abrupt('return', Promise.resolve(
             // TODO: use saveDocument using merge as an option
             !restoreAccountDb ? null : restoreAccountDb.collection(collectionName).doc(document.id).set(documentObject)).catch(function (error) {
               console.log(_colors2.default.bold(_colors2.default.red('Error! ' + restoreMsg + ' - ' + error)));
             }));
 
-          case 10:
+          case 6:
           case 'end':
-            return _context3.stop();
+            return _context4.stop();
         }
       }
-    }, _callee3, undefined);
+    }, _callee4, undefined);
   }));
 
-  return function restoreDocument(_x7, _x8, _x9) {
-    return _ref3.apply(this, arguments);
+  return function restoreDocument(_x8, _x9, _x10, _x11) {
+    return _ref4.apply(this, arguments);
   };
 }();
 
