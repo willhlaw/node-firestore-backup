@@ -28,9 +28,11 @@ var getFireApp = function getFireApp(credentialsPath, appName) {
   try {
     var credentialsBuffer = _fs2.default.readFileSync(credentialsPath);
     var credentials = JSON.parse(credentialsBuffer.toString());
-    return _firebaseAdmin2.default.initializeApp({
+    var appInstance = _firebaseAdmin2.default.initializeApp({
       credential: _firebaseAdmin2.default.credential.cert(credentials)
     }, appName || credentialsPath);
+    appInstance.firestore().settings({ timestampsInSnapshots: true });
+    return appInstance;
   } catch (error) {
     console.log(_colors2.default.bold(_colors2.default.red('Unable to read: ')) + _colors2.default.bold(credentialsPath) + ' - ' + error);
     return error;
