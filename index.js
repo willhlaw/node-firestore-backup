@@ -153,7 +153,7 @@ const backupDocument = (
   logPath: string
 ): Promise<any> => {
   console.log(
-    "Backing up Document '" +
+    "Backing up" + (document.exists ? " " : " (empty) ") + "Document '" +
       logPath +
       document.id +
       "'" +
@@ -164,25 +164,27 @@ const backupDocument = (
 
   try {
     mkdirp.sync(backupPath);
-    let fileContents: string;
-    const documentBackup =
-      plainJSONBackup === true
-        ? document.data()
-        : constructDocumentObjectToBackup(document.data());
-    if (prettyPrint === true) {
-      if (stable === true) {
-        fileContents = stringify(documentBackup, { space: 2 });
+    if (document.exists) {
+      let fileContents: string;
+      const documentBackup =
+        plainJSONBackup === true
+          ? document.data()
+          : constructDocumentObjectToBackup(document.data());
+      if (prettyPrint === true) {
+        if (stable === true) {
+          fileContents = stringify(documentBackup, { space: 2 });
+        } else {
+          fileContents = JSON.stringify(documentBackup, null, 2);
+        }
       } else {
-        fileContents = JSON.stringify(documentBackup, null, 2);
+        if (stable === true) {
+          fileContents = stringify(documentBackup);
+        } else {
+          fileContents = JSON.stringify(documentBackup);
+        }
       }
-    } else {
-      if (stable === true) {
-        fileContents = stringify(documentBackup);
-      } else {
-        fileContents = JSON.stringify(documentBackup);
-      }
+      fs.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
     }
-    fs.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 
     return document.ref.getCollections().then(collections => {
       return promiseSerial(
@@ -230,20 +232,22 @@ const backupCollection = (
   try {
     mkdirp.sync(backupPath);
 
-    return collection.get().then(snapshots => {
-      const backupFunctions = [];
-      snapshots.forEach(document => {
-        backupFunctions.push(() => {
-          const backupDocumentPromise = backupDocument(
-            document,
-            backupPath + '/' + document.id,
-            logPath + collection.id + '/'
-          );
-          restoreDocument(logPath + collection.id, document);
-          return backupDocumentPromise;
+    return collection.listDocuments().then(documentRefs => {
+      return Promise.all(documentRefs.map(documentRef => documentRef.get())).then(snapshots => {
+        const backupFunctions = [];
+        snapshots.forEach(document => {
+          backupFunctions.push(() => {
+            const backupDocumentPromise = backupDocument(
+              document,
+              backupPath + '/' + document.id,
+              logPath + collection.id + '/'
+            );
+            restoreDocument(logPath + collection.id, document);
+            return backupDocumentPromise;
+          });
         });
-      });
-      return promiseSerial(backupFunctions);
+        return promiseSerial(backupFunctions);
+      })
     });
   } catch (error) {
     console.log(
@@ -269,6 +273,9 @@ export const restoreAccountDb = restoreAccountCredentialsPath
   : null;
 
 const restoreDocument = (collectionName: string, document: Object) => {
+  if (!document.exists) {
+    return Promise.resolve(null)
+  }
   const restoreMsg = `Restoring to collection ${collectionName} document ${
     document.id
   }`;

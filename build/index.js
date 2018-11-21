@@ -124,26 +124,28 @@ var promiseSerial = function promiseSerial(funcs) {
 };
 
 var backupDocument = function backupDocument(document, backupPath, logPath) {
-  console.log("Backing up Document '" + logPath + document.id + "'" + (plainJSONBackup === true ? ' with -J --plainJSONBackup' : ' with type information'));
+  console.log("Backing up" + (document.exists ? " " : " (empty) ") + "Document '" + logPath + document.id + "'" + (plainJSONBackup === true ? ' with -J --plainJSONBackup' : ' with type information'));
 
   try {
     _mkdirp2.default.sync(backupPath);
-    var fileContents = void 0;
-    var documentBackup = plainJSONBackup === true ? document.data() : (0, _FirestoreDocument.constructDocumentObjectToBackup)(document.data());
-    if (prettyPrint === true) {
-      if (stable === true) {
-        fileContents = (0, _jsonStableStringify2.default)(documentBackup, { space: 2 });
+    if (document.exists) {
+      var fileContents = void 0;
+      var documentBackup = plainJSONBackup === true ? document.data() : (0, _FirestoreDocument.constructDocumentObjectToBackup)(document.data());
+      if (prettyPrint === true) {
+        if (stable === true) {
+          fileContents = (0, _jsonStableStringify2.default)(documentBackup, { space: 2 });
+        } else {
+          fileContents = JSON.stringify(documentBackup, null, 2);
+        }
       } else {
-        fileContents = JSON.stringify(documentBackup, null, 2);
+        if (stable === true) {
+          fileContents = (0, _jsonStableStringify2.default)(documentBackup);
+        } else {
+          fileContents = JSON.stringify(documentBackup);
+        }
       }
-    } else {
-      if (stable === true) {
-        fileContents = (0, _jsonStableStringify2.default)(documentBackup);
-      } else {
-        fileContents = JSON.stringify(documentBackup);
-      }
+      _fs2.default.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
     }
-    _fs2.default.writeFileSync(backupPath + '/' + document.id + '.json', fileContents);
 
     return document.ref.getCollections().then(function (collections) {
       return promiseSerial(collections.map(function (collection) {
@@ -170,16 +172,20 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
   try {
     _mkdirp2.default.sync(backupPath);
 
-    return collection.get().then(function (snapshots) {
-      var backupFunctions = [];
-      snapshots.forEach(function (document) {
-        backupFunctions.push(function () {
-          var backupDocumentPromise = backupDocument(document, backupPath + '/' + document.id, logPath + collection.id + '/');
-          restoreDocument(logPath + collection.id, document);
-          return backupDocumentPromise;
+    return collection.listDocuments().then(function (documentRefs) {
+      return Promise.all(documentRefs.map(function (documentRef) {
+        return documentRef.get();
+      })).then(function (snapshots) {
+        var backupFunctions = [];
+        snapshots.forEach(function (document) {
+          backupFunctions.push(function () {
+            var backupDocumentPromise = backupDocument(document, backupPath + '/' + document.id, logPath + collection.id + '/');
+            restoreDocument(logPath + collection.id, document);
+            return backupDocumentPromise;
+          });
         });
+        return promiseSerial(backupFunctions);
       });
-      return promiseSerial(backupFunctions);
     });
   } catch (error) {
     console.log(_colors2.default.bold(_colors2.default.red("Unable to create backup path, skipping backup of Collection '" + collection.id + "': ")) + _colors2.default.bold(backupPath) + ' - ' + error);
@@ -192,6 +198,9 @@ var accountDb = accountCredentialsPath ? accountApp.firestore() : null;
 var restoreAccountDb = exports.restoreAccountDb = restoreAccountCredentialsPath ? restoreAccountApp.firestore() : null;
 
 var restoreDocument = function restoreDocument(collectionName, document) {
+  if (!document.exists) {
+    return Promise.resolve(null);
+  }
   var restoreMsg = 'Restoring to collection ' + collectionName + ' document ' + document.id;
   console.log(restoreMsg + '...');
   return Promise.resolve(
