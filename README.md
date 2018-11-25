@@ -53,6 +53,7 @@ Options:
 * `-B`, `--backupPath` `<path>` Path to store backup.
 * `-a2`, `--restoreAccountCredentials` `<path>` Google Cloud account credentials JSON file for restoring documents.
 * `-P`, `--prettyPrint` JSON backups done with pretty-printing.
+* `-E`, `--exclude` Comma separated list of excluded collections, use * for document id wildcard.
 * `-S`, `--stable` JSON backups done with stable-stringify.
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
@@ -101,6 +102,21 @@ Example:
 
 ```sh
 firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --prettyPrint
+```
+
+### Exclude collection or document
+
+To exclude collections or documents from backup you can use the option `--exclude`.
+
+* `-E`, `--exclude` - Comma separated list of excluded paths, use * for document id wildcard.
+
+All documents and subcollections following a match will be excluded. By specifying the document ID a specific subcollection can be excluded. Use `*` for document ID wildcard.    
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase \
+  --exclude "/logs,/users/*/details,/settings/private"
 ```
 
 ### Backup with stable stringify:

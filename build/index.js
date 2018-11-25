@@ -49,6 +49,9 @@ var accountCredentialsPathParamDescription = 'Google Cloud account credentials J
 var backupPathParamKey = 'backupPath';
 var backupPathParamDescription = 'Path to store backup';
 
+var excludeCollectionsParamKey = 'exclude';
+var excludeCollectionsParamDescription = 'Comma separated list of excluded collections, ' + 'use * for document id wildcard';
+
 var restoreAccountCredentialsPathParamKey = 'restoreAccountCredentials';
 var restoreAccountCredentialsPathParamDescription = 'Google Cloud account credentials JSON file for restoring documents';
 
@@ -72,7 +75,7 @@ try {
 // or they can be merged with existing ones
 var mergeData = false;
 
-_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-S, --' + stableParamKey, stableParamParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).parse(_process2.default.argv);
+_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-E, --' + excludeCollectionsParamKey + ' <col1,col2>', excludeCollectionsParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-S, --' + stableParamKey, stableParamParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).parse(_process2.default.argv);
 
 var accountCredentialsPath = _commander2.default[accountCredentialsPathParamKey];
 if (accountCredentialsPath && !_fs2.default.existsSync(accountCredentialsPath)) {
@@ -94,6 +97,8 @@ if (restoreAccountCredentialsPath && !_fs2.default.existsSync(restoreAccountCred
   _commander2.default.help();
   _process2.default.exit(1);
 }
+
+var exclusions = _commander2.default[excludeCollectionsParamKey] !== undefined && _commander2.default[excludeCollectionsParamKey] !== null ? _commander2.default[excludeCollectionsParamKey].split(',') : [];
 
 var prettyPrint = _commander2.default[prettyPrintParamKey] !== undefined && _commander2.default[prettyPrintParamKey] !== null;
 
@@ -123,8 +128,32 @@ var promiseSerial = function promiseSerial(funcs) {
   }, Promise.resolve([]));
 };
 
+var isExcluded = function isExcluded(fullPath) {
+  if (exclusions.length > 0) {
+    var escapedPath = fullPath.split('/').reduce(function (previousValue, currentValue, currentIndex) {
+      return previousValue + (currentIndex % 2 === 1 ? '/' + currentValue : '/*');
+    });
+    return exclusions.find(function (exclusion) {
+      return fullPath.startsWith(exclusion);
+    }) || exclusions.find(function (exclusion) {
+      return escapedPath.startsWith(exclusion);
+    });
+  }
+  return false;
+};
+
 var backupDocument = function backupDocument(document, backupPath, logPath) {
-  console.log("Backing up Document '" + logPath + document.id + "'" + (plainJSONBackup === true ? ' with -J --plainJSONBackup' : ' with type information'));
+
+  var fullPath = logPath + document.id;
+
+  if (isExcluded(fullPath)) {
+    console.log('Skipping backup of Document ' + fullPath);
+    return promiseSerial([function () {
+      return Promise.resolve();
+    }]);
+  }
+
+  console.log("Backing up Document '" + fullPath + "'" + (plainJSONBackup === true ? ' with -J --plainJSONBackup' : ' with type information'));
 
   try {
     _mkdirp2.default.sync(backupPath);
@@ -148,7 +177,7 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
     return document.ref.getCollections().then(function (collections) {
       return promiseSerial(collections.map(function (collection) {
         return function () {
-          return backupCollection(collection, backupPath + '/' + collection.id, logPath + document.id + '/');
+          return backupCollection(collection, backupPath + '/' + collection.id, fullPath + '/');
         };
       }));
     });
@@ -159,13 +188,29 @@ var backupDocument = function backupDocument(document, backupPath, logPath) {
 };
 
 var backupCollection = function backupCollection(collection, backupPath, logPath) {
-  console.log("Backing up Collection '" + logPath + collection.id + "'");
+  var fullPath = logPath + collection.id;
 
-  // TODO: implement feature to skip certain Collections
-  // if (collection.id.toLowerCase().indexOf('geotrack') > 0) {
-  //   console.log(`Skipping ${collection.id}`);
-  //   return promiseSerial([() => Promise.resolve()]);
-  // }
+  if (isExcluded(fullPath)) {
+    console.log('Skipping backup of Collection ' + fullPath);
+    return promiseSerial([function () {
+      return Promise.resolve();
+    }]);
+  }
+
+  if (exclusions.length > 0) {
+    var escapedPath = fullPath.split('/').reduce(function (previousValue, currentValue, currentIndex) {
+      return previousValue + (currentIndex % 2 === 1 ? '/' + currentValue : '/*');
+    });
+    if (exclusions.find(function (exclusion) {
+      return fullPath.startsWith(exclusion);
+    }) || exclusions.find(function (exclusion) {
+      return escapedPath.startsWith(exclusion);
+    })) {
+      return promiseSerial([function () {
+        return Promise.resolve();
+      }]);
+    }
+  }
 
   try {
     _mkdirp2.default.sync(backupPath);
@@ -174,8 +219,8 @@ var backupCollection = function backupCollection(collection, backupPath, logPath
       var backupFunctions = [];
       snapshots.forEach(function (document) {
         backupFunctions.push(function () {
-          var backupDocumentPromise = backupDocument(document, backupPath + '/' + document.id, logPath + collection.id + '/');
-          restoreDocument(logPath + collection.id, document);
+          var backupDocumentPromise = backupDocument(document, backupPath + '/' + document.id, fullPath + '/');
+          restoreDocument(fullPath, document);
           return backupDocumentPromise;
         });
       });
