@@ -24,6 +24,10 @@ const accountCredentialsPathParamDescription =
 const backupPathParamKey = 'backupPath';
 const backupPathParamDescription = 'Path to store backup';
 
+const excludeCollectionsParamKey = 'exclude'
+const excludeCollectionsParamDescription = 'Comma separated list of excluded collections, ' +
+  'use * for document id wildcard';
+
 const restoreAccountCredentialsPathParamKey = 'restoreAccountCredentials';
 const restoreAccountCredentialsPathParamDescription =
   'Google Cloud account credentials JSON file for restoring documents';
@@ -61,6 +65,7 @@ commander
     '-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>',
     restoreAccountCredentialsPathParamDescription
   )
+  .option('-E, --' + excludeCollectionsParamKey + ' <col1,col2>', excludeCollectionsParamDescription)
   .option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription)
   .option('-S, --' + stableParamKey, stableParamParamDescription)
 
@@ -103,6 +108,12 @@ if (
   commander.help();
   process.exit(1);
 }
+
+const exclusions =
+  (commander[excludeCollectionsParamKey] !== undefined &&
+    commander[excludeCollectionsParamKey] !== null)
+    ? commander[excludeCollectionsParamKey].split(',')
+    : [];
 
 const prettyPrint =
   commander[prettyPrintParamKey] !== undefined &&
@@ -147,15 +158,33 @@ const promiseSerial = funcs => {
   }, Promise.resolve([]));
 };
 
+const isExcluded = fullPath => {
+  if (exclusions.length > 0) {
+    const escapedPath = fullPath.split('/').reduce((previousValue, currentValue, currentIndex) => {
+      return previousValue + (currentIndex % 2 === 1 ? `/${currentValue}` : '/*');
+    })
+    return exclusions.find(exclusion => fullPath.startsWith(exclusion)) ||
+      exclusions.find(exclusion => escapedPath.startsWith(exclusion));
+  }
+  return false;
+};
+
 const backupDocument = (
   document: Object,
   backupPath: string,
   logPath: string
 ): Promise<any> => {
+
+  const fullPath = logPath + document.id
+
+  if (isExcluded(fullPath)) {
+    console.log(`Skipping backup of Document ${fullPath}`);
+    return promiseSerial([() => Promise.resolve()]);
+  }
+
   console.log(
     "Backing up Document '" +
-      logPath +
-      document.id +
+      fullPath +
       "'" +
       (plainJSONBackup === true
         ? ' with -J --plainJSONBackup'
@@ -191,7 +220,7 @@ const backupDocument = (
             return backupCollection(
               collection,
               backupPath + '/' + collection.id,
-              logPath + document.id + '/'
+              fullPath + '/'
             );
           };
         })
@@ -219,13 +248,22 @@ const backupCollection = (
   backupPath: string,
   logPath: string
 ): Promise<void> => {
-  console.log("Backing up Collection '" + logPath + collection.id + "'");
+  const fullPath = logPath + collection.id
 
-  // TODO: implement feature to skip certain Collections
-  // if (collection.id.toLowerCase().indexOf('geotrack') > 0) {
-  //   console.log(`Skipping ${collection.id}`);
-  //   return promiseSerial([() => Promise.resolve()]);
-  // }
+  if (isExcluded(fullPath)) {
+    console.log(`Skipping backup of Collection ${fullPath}`);
+    return promiseSerial([() => Promise.resolve()]);
+  }
+
+  if (exclusions.length > 0) {
+    const escapedPath = fullPath.split('/').reduce((previousValue, currentValue, currentIndex) => {
+      return previousValue + (currentIndex % 2 === 1 ? `/${currentValue}` : '/*')
+    })
+    if (exclusions.find(exclusion => fullPath.startsWith(exclusion)) ||
+      exclusions.find(exclusion => escapedPath.startsWith(exclusion))) {
+      return promiseSerial([() => Promise.resolve()])
+    }
+  }
 
   try {
     mkdirp.sync(backupPath);
@@ -237,9 +275,9 @@ const backupCollection = (
           const backupDocumentPromise = backupDocument(
             document,
             backupPath + '/' + document.id,
-            logPath + collection.id + '/'
+            fullPath + '/'
           );
-          restoreDocument(logPath + collection.id, document);
+          restoreDocument(fullPath, document);
           return backupDocumentPromise;
         });
       });
