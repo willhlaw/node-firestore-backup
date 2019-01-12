@@ -71,7 +71,7 @@ firestore-backup-restore --accountCredentials path/to/account/credentials/file.j
 
 ### Clone:
 
-Move data from Firestore in `accountCredentials` to Firestore specified in `accountRestoreCredentials`.
+Move data from Firestore in `accountCredentials` to Firestore specified in `restoreAccountCredentials`.
 
 As of version 1.2, this process still requires `--backupPath` option. This may be a simple change and tested. In fact, there is an [issue](https://github.com/willhlaw/node-firestore-backup-restore/issues/15) marked `good first issue` to fix this if there are any takers.
 
