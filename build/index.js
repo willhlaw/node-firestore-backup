@@ -70,11 +70,11 @@ var stableParamParamDescription = 'JSON backups done with stable-stringify';
 
 var plainJSONBackupParamKey = 'plainJSONBackup';
 var plainJSONBackupParamDescription = 'JSON backups done without preserving any type information\n                                          - Lacks full fidelity restore to Firestore\n                                          - Can be used for other export purposes';
-var excludeCollectionParamKey = 'excludeCollection';
+var excludeCollectionParamKey = 'excludeCollections';
 var excludeCollectionParamDescription = 'Excludes provided collections when backing up, e.g. [/collection1/doc1/subcollection2],[collection3]';
 
 var excludePatternParamKey = 'excludePattern';
-var excludePatternParamDescription = 'Patterns to match against when backung up, e.g. [regex1],[regex2]';
+var excludePatternParamDescription = 'Exclude patterns to match against when backing up, e.g. [regex1],[regex2]';
 
 var packagePath = __dirname.includes('/build') ? '..' : '.';
 
@@ -87,7 +87,7 @@ try {
 // or they can be merged with existing ones
 var mergeData = false;
 
-_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-S, --' + stableParamKey, stableParamParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).option('-e, --' + excludeCollectionParamKey + ' <collections>', excludeCollectionParamDescription, commaSeparatedList).option('-e2, --' + excludePatternParamKey + ' <pattern>', excludePatternParamDescription, commaSeparatedListAndRegExp).parse(_process2.default.argv);
+_commander2.default.version(version).option('-a, --' + accountCredentialsPathParamKey + ' <path>', accountCredentialsPathParamDescription).option('-B, --' + backupPathParamKey + ' <path>', backupPathParamDescription).option('-a2, --' + restoreAccountCredentialsPathParamKey + ' <path>', restoreAccountCredentialsPathParamDescription).option('-P, --' + prettyPrintParamKey, prettyPrintParamDescription).option('-S, --' + stableParamKey, stableParamParamDescription).option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription).option('-e, --' + excludeCollectionParamKey + ' <collections>', excludeCollectionParamDescription, commaSeparatedList).option('-E, --' + excludePatternParamKey + ' <regex>', excludePatternParamDescription, commaSeparatedListAndRegExp).parse(_process2.default.argv);
 
 var accountCredentialsPath = _commander2.default[accountCredentialsPathParamKey];
 if (accountCredentialsPath && !_fs2.default.existsSync(accountCredentialsPath)) {
@@ -144,6 +144,15 @@ var promiseSerial = function promiseSerial(funcs) {
 
 var backupDocument = function backupDocument(document, backupPath, logPath) {
   console.log("Backing up Document '" + logPath + document.id + "'" + (plainJSONBackup === true ? ' with -J --plainJSONBackup' : ' with type information'));
+
+  if (excludePatterns.some(function (pattern) {
+    return pattern.test(logPath + document.id);
+  })) {
+    console.log('Skipping ' + document.id);
+    return promiseSerial([function () {
+      return Promise.resolve();
+    }]);
+  }
 
   try {
     _mkdirp2.default.sync(backupPath);

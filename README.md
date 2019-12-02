@@ -57,7 +57,7 @@ Options:
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
 * `-e`, `--excludeCollections` Excludes provided collections when backing up, e.g. [/collection1/doc1/subcollection2],[/collection3]
-* `-e2`, `--excludePattern` Exclude patterns to match against when backing up, e.g. [regex1],[regex2]
+* `-E`, `--excludePattern` Exclude patterns to match against when backing up, e.g. [regex1],[regex2]
 
 ### Backup:
 

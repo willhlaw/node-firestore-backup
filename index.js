@@ -79,7 +79,7 @@ commander
 
   .option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription)
   .option('-e, --' + excludeCollectionParamKey + ' <collections>', excludeCollectionParamDescription, commaSeparatedList)
-  .option('-e2, --' + excludePatternParamKey + ' <regex>', excludePatternParamDescription, commaSeparatedListAndRegExp)
+  .option('-E, --' + excludePatternParamKey + ' <regex>', excludePatternParamDescription, commaSeparatedListAndRegExp)
   .parse(process.argv);
 
 const accountCredentialsPath = commander[accountCredentialsPathParamKey];
@@ -180,6 +180,11 @@ const backupDocument = (
         ? ' with -J --plainJSONBackup'
         : ' with type information')
   );
+
+  if(excludePatterns.some(pattern => pattern.test(logPath + document.id))){
+    console.log(`Skipping ${document.id}`);
+    return promiseSerial([() => Promise.resolve()])
+  }
 
   try {
     mkdirp.sync(backupPath);
