@@ -17,6 +17,14 @@ import {
   saveDocument
 } from './lib/FirestoreDocument';
 
+function commaSeparatedList(value) {
+  return value.split(',')
+}
+
+function commaSeparatedListAndRegExp(value) {
+  return value.split(',').map(entry => new RegExp(entry))
+}
+
 const accountCredentialsPathParamKey = 'accountCredentials';
 const accountCredentialsPathParamDescription =
   'Google Cloud account credentials JSON file';
@@ -38,6 +46,11 @@ const plainJSONBackupParamKey = 'plainJSONBackup';
 const plainJSONBackupParamDescription = `JSON backups done without preserving any type information
                                           - Lacks full fidelity restore to Firestore
                                           - Can be used for other export purposes`;
+const excludeCollectionParamKey = 'excludeCollections';
+const excludeCollectionParamDescription = 'Excludes provided collections when backing up, e.g. [/collection1/doc1/subcollection2],[collection3]';
+
+const excludePatternParamKey = 'excludePattern';
+const excludePatternParamDescription = 'Exclude patterns to match against when backing up, e.g. [regex1],[regex2]'
 
 const packagePath = __dirname.includes('/build') ? '..' : '.';
 
@@ -65,6 +78,8 @@ commander
   .option('-S, --' + stableParamKey, stableParamParamDescription)
 
   .option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription)
+  .option('-e, --' + excludeCollectionParamKey + ' <collections>', excludeCollectionParamDescription, commaSeparatedList)
+  .option('-E, --' + excludePatternParamKey + ' <regex>', excludePatternParamDescription, commaSeparatedListAndRegExp)
   .parse(process.argv);
 
 const accountCredentialsPath = commander[accountCredentialsPathParamKey];
@@ -116,6 +131,10 @@ const plainJSONBackup =
   commander[plainJSONBackupParamKey] !== undefined &&
   commander[plainJSONBackupParamKey] !== null;
 
+const excludeCollections = commander[excludeCollectionParamKey] || [];
+
+const excludePatterns = commander[excludePatternParamKey] || [];
+
 const accountApp: Object = accountCredentialsPath
   ? getFireApp(accountCredentialsPath)
   : {};
@@ -161,6 +180,11 @@ const backupDocument = (
         ? ' with -J --plainJSONBackup'
         : ' with type information')
   );
+
+  if(excludePatterns.some(pattern => pattern.test(logPath + document.id))){
+    console.log(`Skipping ${document.id}`);
+    return promiseSerial([() => Promise.resolve()])
+  }
 
   try {
     mkdirp.sync(backupPath);
@@ -219,13 +243,13 @@ const backupCollection = (
   backupPath: string,
   logPath: string
 ): Promise<void> => {
-  console.log("Backing up Collection '" + logPath + collection.id + "'");
+  const collectionPath = logPath + collection.id
+  console.log("Backing up Collection '" + collectionPath + "'");
 
-  // TODO: implement feature to skip certain Collections
-  // if (collection.id.toLowerCase().indexOf('geotrack') > 0) {
-  //   console.log(`Skipping ${collection.id}`);
-  //   return promiseSerial([() => Promise.resolve()]);
-  // }
+  if (excludeCollections.includes(collectionPath) || excludePatterns.some(pattern => pattern.test(collectionPath))) {
+    console.log(`Skipping ${collection.id}`);
+    return promiseSerial([() => Promise.resolve()]);
+  }
 
   try {
     mkdirp.sync(backupPath);

@@ -56,6 +56,8 @@ Options:
 * `-S`, `--stable` JSON backups done with stable-stringify.
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
+* `-e`, `--excludeCollections` Excludes provided collections when backing up, e.g. [/collection1/doc1/subcollection2],[/collection3]
+* `-E`, `--excludePattern` Exclude patterns to match against when backing up, e.g. [regex1],[regex2]
 
 ### Backup:
 
@@ -200,6 +202,25 @@ Document saved with type information (Default)
   },
   status: { value: 'read', type: 'string' },
   identifier: { value: 'provider', type: 'string' }
+```
+
+### Exclude collections
+
+The optional parameter allows `--excludeCollections` skipping of provided collections. This parameter accepts a comma seperated list of collections.
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --excludeCollections /collection1/document/subcollectionToIgnore,/collectionToIgnore
+```
+
+### Exclude paths by regex
+Skips documents or collections by pattern matching. All subpaths of matched paths will also be excluded. This parameter accepts a comma seperated list of regular expressions.
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --excludePattern '^/collectionToIgnore,^/[^/]*/[^/]*/subcollectionToIgnore'
 ```
 
 ## Contributions
