@@ -68,7 +68,7 @@ As of version 1.2, the default is to save files with each field converted to a `
 Example backup:
 
 ```sh
-firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --excludePattern '.*/collection1.*'
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase
 ```
 
 ### Clone:
@@ -202,6 +202,25 @@ Document saved with type information (Default)
   },
   status: { value: 'read', type: 'string' },
   identifier: { value: 'provider', type: 'string' }
+```
+
+### Exclude collections
+
+The optional parameter allows `--excludeCollections` skipping of provided collections. This parameter accepts a comma seperated list of collections.
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --excludeCollections /collection1/document/subcollectionToIgnore,/collectionToIgnore
+```
+
+### Exclude paths by regex
+Skips documents or collections by pattern matching. All subpaths of matched paths will also be excluded. This parameter accepts a comma seperated list of regular expressions.
+
+Example:
+
+```sh
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --excludePattern '^/collectionToIgnore,^/[^/]*/[^/]*/subcollectionToIgnore'
 ```
 
 ## Contributions
