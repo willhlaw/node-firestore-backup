@@ -56,6 +56,8 @@ Options:
 * `-S`, `--stable` JSON backups done with stable-stringify.
 * `-J`, `--plainJSONBackup` JSON backups done without preserving any type information. - Lacks full fidelity restore to Firestore. - Can be used for other export purposes.
 * `-h`, `--help` output usage information
+* `-e`, `--excludeCollections` Excludes provided collections when backing up, e.g. [/collection1/doc1/subcollection2],[/collection3]
+* `-e2`, `--excludePattern` Exclude patterns to match against when backing up, e.g. [regex1],[regex2]
 
 ### Backup:
 
@@ -66,7 +68,7 @@ As of version 1.2, the default is to save files with each field converted to a `
 Example backup:
 
 ```sh
-firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase
+firestore-backup-restore --accountCredentials path/to/account/credentials/file.json --backupPath /backups/myDatabase --excludePattern '.*/collection1.*'
 ```
 
 ### Clone:
