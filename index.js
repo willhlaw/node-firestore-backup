@@ -46,11 +46,11 @@ const plainJSONBackupParamKey = 'plainJSONBackup';
 const plainJSONBackupParamDescription = `JSON backups done without preserving any type information
                                           - Lacks full fidelity restore to Firestore
                                           - Can be used for other export purposes`;
-const excludeCollectionParamKey = 'excludeCollection';
+const excludeCollectionParamKey = 'excludeCollections';
 const excludeCollectionParamDescription = 'Excludes provided collections when backing up, e.g. [/collection1/doc1/subcollection2],[collection3]';
 
 const excludePatternParamKey = 'excludePattern';
-const excludePatternParamDescription = 'Exclude patterns to match against when backung up, e.g. [regex1],[regex2]'
+const excludePatternParamDescription = 'Exclude patterns to match against when backing up, e.g. [regex1],[regex2]'
 
 const packagePath = __dirname.includes('/build') ? '..' : '.';
 
@@ -79,7 +79,7 @@ commander
 
   .option('-J, --' + plainJSONBackupParamKey, plainJSONBackupParamDescription)
   .option('-e, --' + excludeCollectionParamKey + ' <collections>', excludeCollectionParamDescription, commaSeparatedList)
-  .option('-e2, --' + excludePatternParamKey + ' <pattern>', excludePatternParamDescription, commaSeparatedListAndRegExp)
+  .option('-e2, --' + excludePatternParamKey + ' <regex>', excludePatternParamDescription, commaSeparatedListAndRegExp)
   .parse(process.argv);
 
 const accountCredentialsPath = commander[accountCredentialsPathParamKey];
